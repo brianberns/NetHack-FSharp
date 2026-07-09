@@ -63,12 +63,37 @@ let private dump () =
     printfn "%s" (Json.toJson asked.Pending)
     0
 
+/// Non-interactive: drive the real native engine through a scripted sequence,
+/// printing the actual dungeon after each action.
+let private nativeDemo () =
+    let engine = Native.create ()
+    let show label (s: GameState) =
+        printfn "\n----- %s -----" label
+        for r in s.Observation.Rows do printfn "%s" r
+        let st = s.Observation.Status
+        printfn "%s  T:%d Dlvl:%d HP:%d(%d) Pw:%d(%d) AC:%d $:%d Str:%s"
+            st.Title st.Turns st.DungeonLevel st.HP st.HPMax st.Power st.PowerMax
+            st.ArmorClass st.Gold st.Strength
+        if not (List.isEmpty s.Observation.Messages) then
+            printfn "msg: %s" (String.concat " | " s.Observation.Messages)
+        printfn "pending: %A  over:%b" s.Pending s.Over
+    let mutable s = engine.Start { NewGame.defaults with Name = Some "Ada" }
+    show "start" s
+    for a in [ Move South; Move East; Move West; Move North; Key 's'; Move South ] do
+        s <- engine.Step s a
+        show (sprintf "%A" a) s
+    0
+
 [<EntryPoint>]
 let main argv =
+    if argv |> Array.contains "native-demo" then nativeDemo () else
     if argv |> Array.contains "dump" then dump () else
 
     let dumpJson = argv |> Array.contains "--json"
-    let engine = Stub.create ()
+    // `--native` plays real NetHack via the DLL; otherwise the in-process stub.
+    let engine =
+        if argv |> Array.contains "--native" then Native.create ()
+        else Stub.create ()
     let mutable s = engine.Start { NewGame.defaults with Name = Some "Bob" }
 
     let mutable running = true
