@@ -109,6 +109,15 @@ let render (step: int) (s: GameState) (note: string) =
 let private trim (messages: List<ChatMessage>) =
     while messages.Count > 16 do messages.RemoveAt(1)
 
+/// A safe action to take when the model call keeps failing, matched to whatever
+/// the game is currently asking for.
+let private fallback (s: GameState) : Action =
+    match s.Pending with
+    | YesNo(_, _, dflt) -> Answer(defaultArg dflt 'n')
+    | Menu _ | More -> Proceed
+    | TextLine _ -> Text ""
+    | _ -> Key 's'
+
 let run (argv: string[]) : Task<int> =
     task {
         let config =
@@ -144,24 +153,35 @@ let run (argv: string[]) : Task<int> =
             while not state.Over && step < maxSteps do
                 step <- step + 1
                 messages.Add(ChatMessage(ChatRole.User, Json.toJson state))
-                let! decision =
-                    task {
-                        try
-                            let! resp = chat.GetResponseAsync<AgentAction>(messages)
-                            return Some resp.Result
-                        with ex ->
-                            eprintfn "agent error: %s" ex.Message
-                            return None
-                    }
+                // Ask the model, retrying a couple of times on transient failures.
+                let mutable decision : Result<AgentAction, string> = Error "no attempt"
+                let mutable attempt = 0
+                while (match decision with Ok _ -> false | _ -> true) && attempt < 3 do
+                    attempt <- attempt + 1
+                    try
+                        let! resp = chat.GetResponseAsync<AgentAction>(messages)
+                        decision <- Ok resp.Result
+                    with ex ->
+                        let inner =
+                            if isNull ex.InnerException then "" else " <- " + ex.InnerException.Message
+                        decision <- Error $"{ex.GetType().Name}: {ex.Message}{inner}"
+                        if attempt < 3 then do! Task.Delay 1000
                 match decision with
-                | Some d ->
+                | Ok d ->
                     messages.Add(ChatMessage(ChatRole.Assistant, Json.toJson d))
                     trim messages
                     render step state $"{d.kind} {d.value} — {d.reasoning}"
                     state <- engine.Step state (toAction d)
-                | None ->
-                    render step state "agent error; searching"
-                    state <- engine.Step state (Key 's')
+                | Error msg ->
+                    // drop the unanswered user turn so the history stays paired
+                    if messages.Count > 1 then messages.RemoveAt(messages.Count - 1)
+                    let fb = fallback state
+                    // persist the full error so it survives the screen clears
+                    try IO.File.AppendAllText("agent-errors.log", $"step {step}: {msg}\n")
+                    with _ -> ()
+                    render step state $"agent error ({attempt} tries): {msg}  |  fallback: {fb}"
+                    do! Task.Delay 1500   // leave it on screen long enough to read
+                    state <- engine.Step state fb
                 do! Task.Delay 400
             render step state (if state.Over then "GAME OVER" else "step budget reached")
             return 0
