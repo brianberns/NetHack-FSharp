@@ -57,6 +57,19 @@ sys\windows\fetch.cmd pdcursesmod
 cd ..
 ```
 
+> **If `fetch.cmd pdcursesmod` reports `tar: This does not look like a tar
+> archive`:** the zip downloaded fine, but `fetch.cmd` shells out to `tar`, and
+> if a GNU `tar` (e.g. from Git for Windows) is first on `PATH` it can't unpack a
+> zip. Run the command from a plain `cmd.exe` (so Windows' bundled bsdtar wins),
+> or extract `Core\lib\pdcursesmod.zip` yourself so that `curses.h` lands
+> directly in `Core\lib\pdcursesmod\`. For example, in PowerShell:
+>
+> ```powershell
+> Expand-Archive Core\lib\pdcursesmod.zip -DestinationPath $env:TEMP\pdc -Force
+> Remove-Item -Recurse -Force Core\lib\pdcursesmod
+> Move-Item (Get-ChildItem $env:TEMP\pdc)[0].FullName Core\lib\pdcursesmod
+> ```
+
 ### 2. Build the native NetHack library (Release | x64)
 
 `NetHackNative.vcxproj` depends on static libs and generated headers produced by
