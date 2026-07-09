@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/fsharp/">
+    <Project Path="fsharp/NetHack.Agent/NetHack.Agent.fsproj" />
     <Project Path="fsharp/NetHack.Api/NetHack.Api.fsproj" />
     <Project Path="fsharp/NetHack.Cli/NetHack.Cli.fsproj" />
     <Project Path="fsharp/NetHack.Tests/NetHack.Tests.fsproj" />
