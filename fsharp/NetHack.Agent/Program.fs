@@ -4,6 +4,7 @@ open System
 open System.ComponentModel
 open System.ClientModel
 open System.Reflection
+open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.AI
 open Microsoft.Extensions.Configuration
@@ -112,6 +113,7 @@ let render (step: int) (s: GameState) (note: string) =
     Console.WriteLine($"pending: {s.Pending}")
     if note <> "" then Console.WriteLine($"[step {step}] {note}")
     Console.WriteLine(String('-', 64))
+    Console.Out.Flush()   // show progress even when output is piped/redirected
 
 /// A safe action to take when the model call keeps failing, matched to whatever
 /// the game is currently asking for.
@@ -138,7 +140,15 @@ let run (argv: string[]) : Task<int> =
         else
             let model = setting config "OpenAI:Model" "OPENAI_MODEL" "gpt-4o-mini"
             let baseUrl = setting config "OpenAI:BaseUrl" "OPENAI_BASE_URL" ""
-            let clientOptions = OpenAIClientOptions()
+            let intSetting key deflt =
+                match Int32.TryParse(setting config key "" (string deflt)) with
+                | true, n -> n | _ -> deflt
+            // Per-call timeout so a stalled/rate-limited request can never hang;
+            // step delay paces requests (free tiers like GitHub Models are rate
+            // limited, so raise it if you see 429s).
+            let timeoutSec = intSetting "OpenAI:TimeoutSeconds" 60
+            let stepDelayMs = intSetting "OpenAI:StepDelayMs" 1500
+            let clientOptions = OpenAIClientOptions(NetworkTimeout = TimeSpan.FromSeconds(float timeoutSec))
             if baseUrl <> "" then clientOptions.Endpoint <- Uri baseUrl
             let openAi = OpenAIClient(ApiKeyCredential apiKey, clientOptions)
             let chat: IChatClient = openAi.GetChatClient(model).AsIChatClient()
@@ -171,14 +181,30 @@ let run (argv: string[]) : Task<int> =
                 let mutable attempt = 0
                 while (match decision with Ok _ -> false | _ -> true) && attempt < 3 do
                     attempt <- attempt + 1
-                    try
-                        let! resp = chat.GetResponseAsync<AgentAction>(messages)
-                        decision <- Ok resp.Result
-                    with ex ->
-                        let inner =
-                            if isNull ex.InnerException then "" else " <- " + ex.InnerException.Message
-                        decision <- Error $"{ex.GetType().Name}: {ex.Message}{inner}"
-                        if attempt < 3 then do! Task.Delay 1000
+                    // Enforce the timeout ourselves via WhenAny: the SDK has been
+                    // observed to ignore cancellation on a hung connection, so we
+                    // never rely on it to unblock us.
+                    let cts = new CancellationTokenSource()
+                    let callTask = chat.GetResponseAsync<AgentAction>(messages, cancellationToken = cts.Token)
+                    let! winner = Task.WhenAny(callTask :> Task, Task.Delay(timeoutSec * 1000))
+                    let mutable errMsg = ""
+                    if obj.ReferenceEquals(winner, callTask) then
+                        try
+                            let! resp = callTask
+                            decision <- Ok resp.Result
+                        with ex ->
+                            let inner =
+                                if isNull ex.InnerException then "" else " <- " + ex.InnerException.Message
+                            errMsg <- $"{ex.GetType().Name}: {ex.Message}{inner}"
+                    else
+                        cts.Cancel()   // best-effort; abandon the hung call regardless
+                        callTask.ContinueWith(fun (t: Task<_>) -> t.Exception |> ignore) |> ignore
+                        errMsg <- $"Timeout: no model response within {timeoutSec}s"
+                    if errMsg <> "" then
+                        decision <- Error errMsg
+                        if attempt < 3 then
+                            let rateLimited = errMsg.Contains "429" || errMsg.ToLowerInvariant().Contains "rate"
+                            do! Task.Delay(if rateLimited then 20000 else 1500)
                 match decision with
                 | Ok d ->
                     notes <- (if isNull d.notes then "" else d.notes)
@@ -192,7 +218,7 @@ let run (argv: string[]) : Task<int> =
                     render step state $"agent error ({attempt} tries): {msg}  |  fallback: {fb}"
                     do! Task.Delay 1500   // leave it on screen long enough to read
                     state <- engine.Step state fb
-                do! Task.Delay 400
+                do! Task.Delay stepDelayMs
             render step state (if state.Over then "GAME OVER" else "step budget reached")
             return 0
     }
