@@ -4,8 +4,10 @@ open System
 open System.Collections.Generic
 open System.ComponentModel
 open System.ClientModel
+open System.Reflection
 open System.Threading.Tasks
 open Microsoft.Extensions.AI
+open Microsoft.Extensions.Configuration
 open OpenAI
 open NetHack.Api
 
@@ -73,9 +75,14 @@ let toAction (a: AgentAction) : Action =
     | "proceed" -> Proceed
     | _ -> Proceed
 
-let private env name deflt =
-    match Environment.GetEnvironmentVariable name with
-    | null | "" -> deflt
+/// Read a setting from user secrets / env vars, falling back to a flat env var
+/// (e.g. OPENAI_API_KEY) and then a default.
+let private setting (config: IConfiguration) key envFallback deflt =
+    match config[key] with
+    | null | "" ->
+        match Environment.GetEnvironmentVariable envFallback with
+        | null | "" -> deflt
+        | v -> v
     | v -> v
 
 let render (step: int) (s: GameState) (note: string) =
@@ -98,13 +105,20 @@ let private trim (messages: List<ChatMessage>) =
 
 let run (argv: string[]) : Task<int> =
     task {
-        let apiKey = env "OPENAI_API_KEY" ""
+        let config =
+            ConfigurationBuilder()
+                .AddUserSecrets(Assembly.GetExecutingAssembly(), true)
+                .AddEnvironmentVariables()
+                .Build()
+        let apiKey = setting config "OpenAI:ApiKey" "OPENAI_API_KEY" ""
         if apiKey = "" then
-            eprintfn "Set OPENAI_API_KEY (optionally OPENAI_MODEL, OPENAI_BASE_URL, and a step count arg)."
+            eprintfn "No API key. Set it with:"
+            eprintfn "  dotnet user-secrets set \"OpenAI:ApiKey\" \"sk-...\" --project fsharp/NetHack.Agent"
+            eprintfn "(or the OPENAI_API_KEY environment variable). Optional: OpenAI:Model, OpenAI:BaseUrl."
             return 1
         else
-            let model = env "OPENAI_MODEL" "gpt-4o-mini"
-            let baseUrl = env "OPENAI_BASE_URL" ""
+            let model = setting config "OpenAI:Model" "OPENAI_MODEL" "gpt-4o-mini"
+            let baseUrl = setting config "OpenAI:BaseUrl" "OPENAI_BASE_URL" ""
             let clientOptions = OpenAIClientOptions()
             if baseUrl <> "" then clientOptions.Endpoint <- Uri baseUrl
             let openAi = OpenAIClient(ApiKeyCredential apiKey, clientOptions)
