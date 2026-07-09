@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Reflection
 open System.Threading
+open System.Collections.Concurrent
 open System.Runtime.InteropServices
 open System.Text.RegularExpressions
 
@@ -36,11 +37,41 @@ module Native =
                               [<MarshalAs(UnmanagedType.LPArray,
                                           ArraySubType = UnmanagedType.LPStr)>] string[] argv)
 
-    /// Directory holding NetHackNative.dll and the data files (nhdat500, the
-    /// *.template files, ...). Defaults to the in-repo build output; override
-    /// before the first `create` if the DLL lives elsewhere.
-    let mutable dataDir =
-        @"C:\Users\brian\source\repos\NetHack\Core\binary\Release\x64"
+    // ---- locating the DLL / data (#5) ---------------------------------
+
+    /// Explicit directory holding NetHackNative.dll + data files. When None
+    /// (default), the directory is discovered: the NETHACK_NATIVE_DIR
+    /// environment variable if set, otherwise a `Core/binary/Release/x64`
+    /// found by walking up from the running assembly.
+    let mutable dataDirOverride : string option = None
+
+    let private hasDll (dir: string) =
+        not (String.IsNullOrWhiteSpace dir) && File.Exists(Path.Combine(dir, Dll))
+
+    let private discover () : string option =
+        let env = Environment.GetEnvironmentVariable "NETHACK_NATIVE_DIR"
+        if hasDll env then Some env
+        else
+            let start =
+                let loc = Assembly.GetExecutingAssembly().Location
+                if String.IsNullOrEmpty loc then AppContext.BaseDirectory
+                else Path.GetDirectoryName loc
+            let rec up (dir: DirectoryInfo) =
+                if isNull dir then None
+                else
+                    let candidate = Path.Combine(dir.FullName, "Core", "binary", "Release", "x64")
+                    if hasDll candidate then Some candidate else up dir.Parent
+            up (DirectoryInfo start)
+
+    let private dataDir () : string =
+        match dataDirOverride with
+        | Some d -> d
+        | None ->
+            match discover () with
+            | Some d -> d
+            | None ->
+                failwith $"Could not locate {Dll}. Build the NetHackNative project, \
+                           or set Native.dataDirOverride to its directory."
 
     let mutable private resolverInstalled = false
 
@@ -50,8 +81,7 @@ module Native =
             NativeLibrary.SetDllImportResolver(
                 Assembly.GetExecutingAssembly(),
                 fun name _ _ ->
-                    if name = Dll then
-                        NativeLibrary.Load(Path.Combine(dataDir, Dll))
+                    if name = Dll then NativeLibrary.Load(Path.Combine(dataDir (), Dll))
                     else IntPtr.Zero)
 
     // ---- window / status constants ------------------------------------
@@ -66,6 +96,11 @@ module Native =
 
     let private COLNO = 80
     let private ROWNO = 21
+
+    /// One step must settle (or end) within this budget, else it is reported as
+    /// a fault rather than hanging the caller forever.
+    [<Literal>]
+    let private StepTimeoutMs = 30000
 
     let private colorName =
         [| "black"; "red"; "green"; "brown"; "blue"; "magenta"; "cyan"; "gray"
@@ -89,7 +124,8 @@ module Native =
 
     let private strAt (args: nativeint) (i: int) : string =
         let p = nativeint (argAt args i)
-        if p = IntPtr.Zero then "" else (Marshal.PtrToStringAnsi p |> Option.ofObj |> Option.defaultValue "")
+        if p = IntPtr.Zero then ""
+        else (Marshal.PtrToStringAnsi p |> Option.ofObj |> Option.defaultValue "")
 
     let private hunger (s: string) : Hunger =
         match s.Trim() with
@@ -108,19 +144,88 @@ module Native =
     let private tryInt (s: string) =
         match Int32.TryParse(s.Trim()) with true, v -> v | _ -> 0
 
+    let private emptyStatus : Status =
+        { Title = ""; Alignment = ""; Strength = ""; Dexterity = 0; Constitution = 0
+          Intelligence = 0; Wisdom = 0; Charisma = 0; HP = 0; HPMax = 0; Power = 0
+          PowerMax = 0; ArmorClass = 0; ExpLevel = 0; Experience = None; Gold = 0L
+          Dungeon = ""; DungeonLevel = 0; Depth = 0; Hunger = NotHungry
+          Encumbrance = None; Conditions = []; Turns = 0L; Score = None }
+
+    let private emptyObservation : Observation =
+        { Width = COLNO; Height = ROWNO
+          Rows = [ for _ in 1 .. ROWNO -> String(' ', COLNO) ]
+          Hero = { X = 0; Y = 0 }; Entities = []; Status = emptyStatus; Messages = [] }
+
+    // ---- environment & playground (#6) --------------------------------
+
+    let private dataFiles =
+        [ "sysconf.template"; "symbols.template"; "nethackrc.template"
+          "nhdat500"; "record"; "opthelp"; "license"; "nethack.txt"
+          "Guidebook.txt"; Dll ]
+
+    /// NetHack derives its data directory from the host exe's folder, so stage
+    /// the data files next to it (only when newer) and run from there.
+    let private prepareEnvironment () =
+        // vi-keys movement (number_pad off); plain-ASCII symbols are forced in
+        // the DLL (windmain LIBNH_SHIM). Process-scoped env only.
+        Environment.SetEnvironmentVariable("NETHACKOPTIONS",
+            "number_pad:0,symset:plain,roguesymset:plain")
+        let baseDir = AppContext.BaseDirectory
+        let src0 = dataDir ()
+        for f in dataFiles do
+            let dst = Path.Combine(baseDir, f)
+            let src = Path.Combine(src0, f)
+            let stale =
+                not (File.Exists dst)
+                || File.GetLastWriteTimeUtc src > File.GetLastWriteTimeUtc dst
+            if File.Exists src && stale then
+                try File.Copy(src, dst, true) with _ -> ()
+        // the stock rc template forces the IBMGraphics_2 line-drawing symset;
+        // replace it with a clean one so the map is plain ASCII.
+        File.WriteAllText(Path.Combine(baseDir, "nethackrc.template"),
+            "OPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n")
+        Directory.SetCurrentDirectory(baseDir)
+
+    /// Remove ONLY this player's leftover level files (e.g. "Ada.0") from the
+    /// NetHack playground so getlock() doesn't prompt to recover an interrupted
+    /// run. Deliberately narrow: never touches save files or other players'
+    /// files, so it cannot destroy an unrelated game.
+    let private cleanPlayground (playerName: string) =
+        let enc =
+            String(playerName |> Seq.filter Char.IsLetterOrDigit |> Seq.toArray)
+        if enc <> "" then
+            let dirs =
+                [ Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData
+                  Environment.GetFolderPath Environment.SpecialFolder.UserProfile ]
+                |> List.map (fun d -> Path.Combine(d, "NetHack", "5.0"))
+            // level files are "<name>.<digits>"; leave the bare "<name>" (a save).
+            let levelFile = Regex($@"^{Regex.Escape enc}\.\d+$", RegexOptions.IgnoreCase)
+            for d in dirs do
+                if Directory.Exists d then
+                    for f in Directory.GetFiles d do
+                        if levelFile.IsMatch(Path.GetFileName f) then
+                            try File.Delete f with _ -> ()
+
     // ---- the session --------------------------------------------------
+
+    /// What the game thread hands back to the API thread at each rendezvous.
+    type private Signal =
+        | Settled of Observation * Prompt
+        | Ended
+        | Faulted of exn
 
     /// Everything the callback thread and the API thread share. One instance
     /// per process while a game is live.
     type private Session() =
-        // rendezvous: the game thread releases `settled` when it parks on an
-        // input request; the API thread releases `action` when it has one.
-        let settled = new SemaphoreSlim(0, 1)
-        let action = new SemaphoreSlim(0, 1)
+        // A single-slot channel each way. The game thread publishes a Signal
+        // when it parks on an input request (or ends/faults); the API thread
+        // replies with the Action to feed that request. Bounded to 1 because
+        // the two sides strictly alternate.
+        let outbox = new BlockingCollection<Signal>(1)
+        let inbox = new BlockingCollection<NetHack.Api.Action>(1)
 
-        // screen buffers, rebuilt as output callbacks arrive
+        // screen buffers, mutated only on the game thread
         let glyphs = Array2D.create ROWNO COLNO ' '
-        let cellColor = Array2D.create ROWNO COLNO "gray"
         let winType = System.Collections.Generic.Dictionary<int, int>()
         let statusText = System.Collections.Generic.Dictionary<int, string>()
         let messages = ResizeArray<string>()
@@ -133,16 +238,11 @@ module Native =
         // during startup we auto-answer pre-game prompts until the first command
         let mutable initializing = true
         let mutable over = false
-
-        // published to the API thread at each settle point
-        let mutable curObs = Unchecked.defaultof<Observation>
-        let mutable curPrompt = Command
-        let mutable pending : NetHack.Api.Action = Proceed
+        // last published screen, so an Ended/Faulted state still carries a map
+        let mutable lastObs = emptyObservation
 
         member val Handler : Handler = Unchecked.defaultof<Handler> with get, set
         member val Thread : Thread = null with get, set
-
-        member _.Over = over
 
         member private _.BuildStatus() : Status =
             let txt k = match statusText.TryGetValue k with true, v -> v | _ -> ""
@@ -180,12 +280,11 @@ module Native =
         /// Called from the game thread when it needs input: publish the current
         /// screen + prompt, block until the API thread supplies an Action.
         member private this.Settle(prompt: Prompt) : NetHack.Api.Action =
-            curObs <- this.BuildObservation()
-            curPrompt <- prompt
+            let obs = this.BuildObservation()
+            lastObs <- obs
             messages.Clear()          // messages are per-step
-            settled.Release() |> ignore
-            action.Wait()
-            pending
+            outbox.Add(Settled(obs, prompt))
+            inbox.Take()
 
         /// The single callback for every window operation.
         member this.Dispatch(name: string, fmt: string, retPtr: nativeint, args: nativeint) =
@@ -207,11 +306,9 @@ module Native =
                 let y = int (argAt args 2)
                 let gi = nativeint (argAt args 3)
                 if gi <> IntPtr.Zero && y >= 0 && y < ROWNO && x >= 0 && x < COLNO then
+                    // glyph_info layout (wintype.h): int glyph; int ttychar; ...
                     let ttychar = Marshal.ReadInt32(gi, 4)
-                    let color = Marshal.ReadInt32(gi, 16)
                     glyphs[y, x] <- char ttychar
-                    if color >= 0 && color < colorName.Length then
-                        cellColor[y, x] <- colorName[color]
             | "shim_curs" ->
                 let w = int (argAt args 0)
                 if (match winType.TryGetValue w with true, t -> t = NHW_MAP | _ -> false) then
@@ -261,11 +358,10 @@ module Native =
                     | Answer c -> writeChar c
                     | _ -> writeChar (defaultArg dflt 'q')
             | "shim_getlin" ->
-                let query = strAt args 0
                 let buf = nativeint (argAt args 1)
                 let reply =
                     if initializing then ""
-                    else match this.Settle(TextLine query) with Text s -> s | _ -> "\027"
+                    else match this.Settle(TextLine(strAt args 0)) with Text s -> s | _ -> "\027"
                 let bytes = Text.Encoding.ASCII.GetBytes(reply)
                 if buf <> IntPtr.Zero then
                     Marshal.Copy(bytes, 0, buf, bytes.Length)
@@ -294,81 +390,57 @@ module Native =
             | Number n -> int (string n).[0]
             | _ -> int ' '
 
+        /// Record a fault raised inside a callback so a waiting API thread wakes
+        /// up, rather than swallowing it (and possibly deadlocking). Best-effort:
+        /// never throws back across the native boundary.
+        member _.Fault(ex: exn) =
+            try
+                if not (outbox.TryAdd(Faulted ex)) then ()
+            with _ -> ()
+
         // ---- API-thread side ----
+
+        /// Wait for the next Signal (with a timeout) and turn it into a GameState.
+        member private _.Await() : GameState =
+            let mutable item = Unchecked.defaultof<Signal>
+            let signal =
+                if outbox.TryTake(&item, StepTimeoutMs) then item
+                else Faulted(TimeoutException "NetHack did not respond within the step timeout")
+            let state obs pending isOver =
+                { Continuation = null; Session = "native"
+                  Observation = obs; Pending = pending; Over = isOver }
+            match signal with
+            | Settled(o, p) -> state o p false
+            | Ended ->
+                over <- true
+                state lastObs (GameOver "the game ended") true
+            | Faulted ex ->
+                over <- true
+                state lastObs (GameOver $"internal error: {ex.Message}") true
+
         member this.Start(opts: NewGame) : GameState =
-            let argv =
-                [| "nethack"; "-u"; defaultArg opts.Name "Player"; null |]
-            let t =
-                Thread((fun () ->
-                    nhmain(3, argv) |> ignore
-                    over <- true
-                    settled.Release() |> ignore),
-                    16 * 1024 * 1024)
+            let name = defaultArg opts.Name "Player"
+            cleanPlayground name
+            let argv = [| "nethack"; "-u"; name; null |]
+            let run () =
+                let ending = try nhmain(3, argv) |> ignore; Ended with ex -> Faulted ex
+                over <- true
+                try outbox.Add ending with _ -> ()
+            let t = Thread(ThreadStart run, 16 * 1024 * 1024)
             t.IsBackground <- true
             this.Thread <- t
             t.Start()
-            settled.Wait()
-            this.ToState()
+            this.Await()
 
         member this.Step(a: NetHack.Api.Action) : GameState =
-            if over then this.ToState()
+            if over then
+                { Continuation = null; Session = "native"
+                  Observation = lastObs; Pending = GameOver "the game ended"; Over = true }
             else
-                pending <- a
-                action.Release() |> ignore
-                settled.Wait()
-                this.ToState()
+                inbox.Add a
+                this.Await()
 
-        member private _.ToState() : GameState =
-            { Continuation = null; Session = "native"
-              Observation = curObs; Pending = (if over then GameOver "ended" else curPrompt)
-              Over = over }
-
-    // ---- data files & lifecycle ---------------------------------------
-
-    let private dataFiles =
-        [ "sysconf.template"; "symbols.template"; "nethackrc.template"
-          "nhdat500"; "record"; "opthelp"; "license"; "nethack.txt"
-          "Guidebook.txt"; Dll ]
-
-    /// NetHack derives its data directory from the host exe's folder, so make
-    /// sure the data files sit next to it, and run from there.
-    let private prepareEnvironment () =
-        // vi-keys movement (number_pad off) and plain-ASCII map symbols so the
-        // Rows are clean and Move maps to hjkl.
-        Environment.SetEnvironmentVariable("NETHACKOPTIONS",
-            "number_pad:0,symset:plain,roguesymset:plain")
-        let baseDir = AppContext.BaseDirectory
-        for f in dataFiles do
-            let dst = Path.Combine(baseDir, f)
-            let src = Path.Combine(dataDir, f)
-            // always refresh, so a rebuilt DLL / data is picked up
-            if File.Exists src then
-                try File.Copy(src, dst, true) with _ -> ()
-        // the stock rc template forces the IBMGraphics_2 line-drawing symset;
-        // replace it with a clean one so the map is plain ASCII.
-        File.WriteAllText(Path.Combine(baseDir, "nethackrc.template"),
-            "OPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n")
-        Directory.SetCurrentDirectory(baseDir)
-
-    /// NetHack's writable playground (level/lock/save files) lives under the
-    /// user's local app data, not the exe dir. Clear leftovers from prior runs
-    /// so getlock() doesn't prompt to recover an interrupted game.
-    let private cleanPlayground () =
-        let candidates =
-            [ Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-              Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) ]
-            |> List.map (fun d -> Path.Combine(d, "NetHack", "5.0"))
-        for d in candidates do
-            if Directory.Exists d then
-                for f in Directory.GetFiles d do
-                    let n = Path.GetFileName f
-                    // level files end in .<digits>; also lock and save files
-                    if Regex.IsMatch(n, @"\.\d+$")
-                       || n.Contains("lock", StringComparison.OrdinalIgnoreCase)
-                       || n.StartsWith("save", StringComparison.OrdinalIgnoreCase)
-                       || n.Equals(".nethackrc", StringComparison.OrdinalIgnoreCase)
-                       || n.Equals("nethackrc", StringComparison.OrdinalIgnoreCase) then
-                        try File.Delete f with _ -> ()
+    // ---- factory ------------------------------------------------------
 
     let mutable private live = false
     let private gate = obj ()
@@ -380,16 +452,16 @@ module Native =
             if live then invalidOp "A native NetHack session is already live in this process."
             live <- true)
         prepareEnvironment ()
-        cleanPlayground ()
         let session = Session()
-        // keep the delegate alive for the life of the session
+        // keep the delegate alive for the life of the session; faults inside a
+        // callback are captured and surfaced, never swallowed silently.
         session.Handler <-
             Handler(fun namePtr fmtPtr retPtr args _ ->
                 try
                     let name = Marshal.PtrToStringAnsi namePtr
                     let fmt = Marshal.PtrToStringAnsi fmtPtr
                     session.Dispatch(name, fmt, retPtr, args)
-                with _ -> ())
+                with ex -> session.Fault ex)
         nhglue_set_handler session.Handler
         { new IEngine with
             member _.Start opts = session.Start opts
