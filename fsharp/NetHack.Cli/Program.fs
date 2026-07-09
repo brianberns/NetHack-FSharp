@@ -90,10 +90,10 @@ let main argv =
     if argv |> Array.contains "dump" then dump () else
 
     let dumpJson = argv |> Array.contains "--json"
-    // `--native` plays real NetHack via the DLL; otherwise the in-process stub.
+    // Real NetHack (via the DLL) is the default; `--stub` uses the in-process stub.
     let engine =
-        if argv |> Array.contains "--native" then Native.create ()
-        else Stub.create ()
+        if argv |> Array.contains "--stub" then Stub.create ()
+        else Native.create ()
     let mutable s = engine.Start { NewGame.defaults with Name = Some "Bob" }
 
     let mutable running = true
