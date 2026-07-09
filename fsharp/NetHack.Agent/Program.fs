@@ -11,17 +11,27 @@ open Microsoft.Extensions.Configuration
 open OpenAI
 open NetHack.Api
 
-/// The structured action we ask the model to return each turn. Kept flat and
-/// string-typed so it produces a clean JSON schema the model can satisfy.
+/// The kinds of action the model may choose. As a string enum this schematizes
+/// to a constrained set the structured-output layer enforces exactly. (A full
+/// F# discriminated union cannot be used here: System.Text.Json reports it an
+/// "unsupported type", and with the FSharp.SystemTextJson converter the schema
+/// collapses to "any", which strict structured output rejects.)
+[<System.Text.Json.Serialization.JsonConverter(typeof<System.Text.Json.Serialization.JsonStringEnumConverter>)>]
+type ActionKind =
+    | Move = 0 | Key = 1 | Answer = 2 | Text = 3 | Number = 4 | Select = 5 | Proceed = 6
+
+/// The structured action the model returns each turn: a typed `kind` plus a
+/// `value` argument interpreted per kind. `toAction` parses it into the strongly
+/// typed NetHack.Api.Action DU immediately, so the rest of the code is DU-based.
 [<CLIMutable>]
 type AgentAction =
     { [<Description("One short sentence explaining the choice.")>]
       reasoning: string
-      [<Description("One of: move, key, answer, text, number, select, proceed.")>]
-      kind: string
-      [<Description("move: N,S,E,W,NE,NW,SE,SW,up,down; key/answer: a single character; text: the line; number: an integer; select: the menu letters to pick (e.g. \"a\" or \"ac\").")>]
+      [<Description("The kind of action to take.")>]
+      kind: ActionKind
+      [<Description("Argument for the action. Move: one of N,S,E,W,NE,NW,SE,SW,up,down. Key/Answer: a single character. Text: the line to type. Number: an integer. Select: the menu letters (e.g. \"a\" or \"ac\"). Proceed: ignored.")>]
       value: string
-      [<Description("Your running memory to carry to the next turn: current goal, what you've discovered (stairs, shops, dangers), and your plan. Keep it concise, a few lines. This is your only memory between turns.")>]
+      [<Description("Your running memory to carry to the next turn: current goal, discoveries (stairs, shops, dangers), and plan. Concise; this is your only memory between turns.")>]
       notes: string }
 
 let systemPrompt = """
@@ -53,21 +63,23 @@ and the short "notes" string you wrote last turn. Always rewrite "notes" with a
 concise memory to carry forward: your current goal, discoveries (where the
 stairs/shops are, dangers), and your plan. A few lines only — it is not a log.
 
-Respond with an action:
-- kind "move", value one of N,S,E,W,NE,NW,SE,SW (or up/down while on stairs).
-- kind "key", value a single command key (s search, i inventory, , pickup,
+Respond with an action: a "kind" and its "value".
+- Move: value one of N,S,E,W,NE,NW,SE,SW (or up/down while on stairs).
+- Key: value a single command key (s search, i inventory, , pickup,
   o open, > descend, < ascend).
-- kind "answer", value "y" or "n" (only when pending is YesNo).
-- kind "text", value the line to type (only when pending is TextLine).
-- kind "proceed" to dismiss a menu/prompt.
+- Answer: value "y" or "n" (only when pending is YesNo).
+- Text: value the line to type (only when pending is TextLine).
+- Number: value an integer (when asked for a quantity).
+- Select: value the menu letters to choose (e.g. "a" or "ac"), when a Menu is open.
+- Proceed: dismiss a menu or prompt.
 Always include one short sentence of reasoning.
 """
 
-/// Translate the model's action into a NetHack.Api Action.
+/// Translate the model's action into the strongly typed NetHack.Api Action DU.
 let toAction (a: AgentAction) : Action =
     let v = (if isNull a.value then "" else a.value).Trim()
-    match (if isNull a.kind then "" else a.kind).Trim().ToLowerInvariant() with
-    | "move" ->
+    match a.kind with
+    | ActionKind.Move ->
         match v.ToLowerInvariant() with
         | "n" | "north" -> Move North
         | "s" | "south" -> Move South
@@ -80,12 +92,11 @@ let toAction (a: AgentAction) : Action =
         | "up" | "<" -> Move Up
         | "down" | ">" -> Move Down
         | _ -> Key 's'
-    | "key" -> if v.Length > 0 then Key v.[0] else Proceed
-    | "answer" -> Answer(if v.Length > 0 then v.[0] else 'y')
-    | "text" -> Text v
-    | "number" -> (match Int32.TryParse v with true, n -> Number n | _ -> Number 0)
-    | "select" -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
-    | "proceed" -> Proceed
+    | ActionKind.Key -> if v.Length > 0 then Key v.[0] else Proceed
+    | ActionKind.Answer -> Answer(if v.Length > 0 then v.[0] else 'y')
+    | ActionKind.Text -> Text v
+    | ActionKind.Number -> (match Int32.TryParse v with true, n -> Number n | _ -> Number 0)
+    | ActionKind.Select -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
     | _ -> Proceed
 
 /// Read a setting from user secrets / env vars, falling back to a flat env var
