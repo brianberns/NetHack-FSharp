@@ -1,0 +1,164 @@
+namespace NetHack.Api
+
+open System.Text.Json.Serialization
+
+/// A coordinate on the dungeon map. X is the column (0..79), Y is the row (0..20).
+type Pos = { X: int; Y: int }
+
+/// Compass and vertical directions the hero can move or act in.
+type Direction =
+    | North | South | East | West
+    | Northeast | Northwest | Southeast | Southwest
+    | Up      // climb stairs '<'
+    | Down    // descend stairs '>'
+
+/// The broad category a decoded glyph falls into. This is the "tier-2" decoding:
+/// the raw NetHack glyph is resolved to a category and (when known) a name,
+/// but not interpreted into strategy.
+type GlyphKind =
+    | HeroSelf
+    | Monster
+    | Pet
+    | Object
+    | Terrain      // floor, wall, corridor
+    | Feature      // fountain, altar, throne, stairs, door, sink, ...
+    | Trap
+    | Warning      // remembered/again monster warning
+    | Unexplored
+
+/// A decoded, positioned thing worth calling out on the map. Terrain such as
+/// walls and floor is left to `Observation.Rows`; `Entities` carries the
+/// monsters, objects, traps and named features a caller reasons about.
+type Entity = {
+    Pos    : Pos
+    Symbol : char             // the ASCII glyph NetHack would draw, e.g. 'd'
+    Kind   : GlyphKind
+    Name   : string option    // decoded name when known, e.g. "jackal", "fountain"
+    Color  : string           // NetHack's 16-colour name, e.g. "red", "cyan"
+    Glyph  : int              // raw NetHack glyph id (fidelity / debugging)
+}
+
+/// Hunger state, mirroring NetHack's hunger levels.
+type Hunger =
+    | Satiated | NotHungry | Hungry | Weak | Fainting | Fainted | Starved
+
+/// Status-line conditions, mirroring the BL_MASK_* flags in botl.h.
+/// Present in the list == the condition is currently active.
+type Condition =
+    | Stone | Slime | Strangled | FoodPoisoning | TerminalIllness
+    | Blind | Deaf | Stunned | Confused | Hallucinating
+    | Levitating | Flying | Riding
+    | Held | Holding | Trapped
+    | Paralyzed | Sleeping | Unconscious
+    | BareHanded
+
+/// The status line, delivered field-by-field via win_status_update.
+type Status = {
+    Title        : string          // "Elbereth the Gallant"
+    Alignment    : string          // "lawful" | "neutral" | "chaotic"
+    Strength     : string          // NetHack prints e.g. "18/50", so keep a string
+    Dexterity    : int
+    Constitution : int
+    Intelligence : int
+    Wisdom       : int
+    Charisma     : int
+    HP           : int
+    HPMax        : int
+    Power        : int
+    PowerMax     : int
+    ArmorClass   : int
+    ExpLevel     : int
+    Experience   : int64 option
+    Gold         : int64
+    Dungeon      : string          // "The Dungeons of Doom"
+    DungeonLevel : int
+    Depth        : int
+    Hunger       : Hunger
+    Encumbrance  : string option   // "Burdened", "Stressed", ...
+    Conditions   : Condition list
+    Turns        : int64
+    Score        : int64 option
+}
+
+/// One row of a menu (inventory, spell list, pick-up list, ...).
+type MenuItem = {
+    Key      : char            // selector letter, e.g. 'a'
+    Text     : string          // "a - an uncursed +0 dagger"
+    Glyph    : Entity option   // some menus show an object glyph
+    Count    : int option      // current selection count, if any
+    Selected : bool
+}
+
+/// How many items a menu lets you select.
+type MenuMode = PickNone | PickOne | PickAny
+
+/// What the game is currently waiting for. This is the crucial piece: it tells
+/// the caller which Actions are legal right now, because NetHack input is modal.
+/// Each case corresponds to a window-proc callback that is currently blocked.
+type Prompt =
+    | Command                                                  // win_nhgetch: free to issue any command
+    | Direction    of question: string                        // getdir: pick a direction
+    | YesNo        of question: string * choices: string * defaultChoice: char option  // win_yn_function
+    | Quantity     of question: string                        // "How many?" numeric reply
+    | TextLine     of prompt: string                          // win_getlin
+    | Menu         of title: string * mode: MenuMode * items: MenuItem list  // win_select_menu
+    | More                                                     // "--More--" paginated message
+    | GameOver     of reason: string                          // terminal; no further input
+
+/// Everything the caller can see: a readable ASCII map, decoded entities on it,
+/// the status line, and the messages the last action produced.
+type Observation = {
+    Width    : int             // 80
+    Height   : int             // 21
+    Rows     : string list     // ASCII map, one string per row — human-readable
+    Hero     : Pos
+    Entities : Entity list     // decoded monsters / objects / features / traps
+    Status   : Status
+    Messages : string list     // messages produced by the action that led here
+}
+
+/// The value the API is a function of. `Session` is an opaque token the server
+/// uses to resume the underlying game; `Continuation` holds the in-process
+/// engine's private state and is never serialized. Callers reason about
+/// `Observation` and `Pending`.
+type GameState = {
+    [<JsonIgnore>] Continuation : obj  // opaque, engine-private; excluded from the wire
+    Session     : string               // opaque id echoed to clients
+    Observation : Observation
+    Pending     : Prompt
+    Over        : bool
+}
+
+/// The player's next input, interpreted relative to the current `Prompt`.
+type Action =
+    | Move     of Direction    // when Pending = Command or Direction
+    | Key      of char         // a raw command key, e.g. 's' search, 'i' inventory
+    | Extended of string       // an extended command, e.g. "#pray"
+    | Answer   of char         // reply to a YesNo prompt
+    | Text     of string       // reply to a TextLine prompt
+    | Number   of int          // reply to a Quantity prompt
+    | Choose   of char list    // menu selections
+    | Proceed                  // acknowledge a --More-- prompt
+
+/// Options for starting a new game. `None` fields let the engine choose (or,
+/// eventually, prompt through the callbacks). `Seed` fixes the RNG for
+/// reproducibility.
+type NewGame = {
+    Name : string option
+    Role : string option       // "Valkyrie", "Wizard", ...
+    Race : string option       // "human", "elf", ...
+    Seed : int option
+}
+
+module NewGame =
+    /// A fully-defaulted new game request.
+    let defaults =
+        { Name = None; Role = None; Race = None; Seed = None }
+
+/// The engine contract. `Start` produces the initial state; `Step` advances it.
+/// The proposed core signature `GameState -> Action -> GameState` is exactly
+/// `Step` with its argument order. Implementations may be a live native session,
+/// a WASM instance, or (here) an in-process stub.
+type IEngine =
+    abstract member Start : NewGame -> GameState
+    abstract member Step  : GameState -> Action -> GameState
