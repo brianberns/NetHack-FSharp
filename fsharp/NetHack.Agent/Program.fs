@@ -109,6 +109,16 @@ let private setting (config: IConfiguration) key envFallback deflt =
         | v -> v
     | v -> v
 
+let intSetting config key deflt =
+    match Int32.TryParse(setting config key "" (string deflt)) with
+    | true, n -> n | _ -> deflt
+
+let boolSetting config key deflt =
+    match (setting config key "" "").ToLower() with
+        | "false" | "f" | "0" -> false
+        | "true"  | "t" | "1" -> true
+        | _ -> deflt
+
 let render (step: int) (s: GameState) (note: string) =
     // Clear only when attached to a real console (skip when output is piped).
     if not Console.IsOutputRedirected then
@@ -151,14 +161,12 @@ let run (argv: string[]) : Task<int> =
         else
             let model = setting config "OpenAI:Model" "OPENAI_MODEL" "gpt-4o-mini"
             let baseUrl = setting config "OpenAI:BaseUrl" "OPENAI_BASE_URL" ""
-            let intSetting key deflt =
-                match Int32.TryParse(setting config key "" (string deflt)) with
-                | true, n -> n | _ -> deflt
             // Per-call timeout so a stalled/rate-limited request can never hang;
             // step delay paces requests (free tiers like GitHub Models are rate
             // limited, so raise it if you see 429s).
-            let timeoutSec = intSetting "OpenAI:TimeoutSeconds" 60
-            let stepDelayMs = intSetting "OpenAI:StepDelayMs" 1500
+            let timeoutSec = intSetting config "OpenAI:TimeoutSeconds" 60
+            let stepDelayMs = intSetting config "OpenAI:StepDelayMs" 1500
+            let useJsonSchemaResponseFormat = boolSetting config "OpenAI:UseJsonSchemaResponseFormat" true
             let clientOptions = OpenAIClientOptions(NetworkTimeout = TimeSpan.FromSeconds(float timeoutSec))
             if baseUrl <> "" then clientOptions.Endpoint <- Uri baseUrl
             let openAi = OpenAIClient(ApiKeyCredential apiKey, clientOptions)
@@ -196,7 +204,11 @@ let run (argv: string[]) : Task<int> =
                     // observed to ignore cancellation on a hung connection, so we
                     // never rely on it to unblock us.
                     let cts = new CancellationTokenSource()
-                    let callTask = chat.GetResponseAsync<AgentAction>(messages, cancellationToken = cts.Token)
+                    let callTask =
+                        chat.GetResponseAsync<AgentAction>(
+                            messages,
+                            useJsonSchemaResponseFormat = useJsonSchemaResponseFormat,
+                            cancellationToken = cts.Token)
                     let! winner = Task.WhenAny(callTask :> Task, Task.Delay(timeoutSec * 1000))
                     let mutable errMsg = ""
                     if obj.ReferenceEquals(winner, callTask) then
