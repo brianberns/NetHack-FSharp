@@ -1,0 +1,5 @@
+; Exports for the libnethack (shim) DLL consumed by NetHack.Api.
+EXPORTS
+    nhmain
+    shim_graphics_set_callback
+    nhglue_set_handler
