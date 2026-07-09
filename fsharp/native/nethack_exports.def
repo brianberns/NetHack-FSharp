@@ -3,3 +3,6 @@ EXPORTS
     nhmain
     shim_graphics_set_callback
     nhglue_set_handler
+    nhglue_describe_at
+    nhglue_anything_size
+    nhglue_build_menu

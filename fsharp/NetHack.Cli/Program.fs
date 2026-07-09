@@ -76,12 +76,34 @@ let private nativeDemo () =
             st.ArmorClass st.Gold st.Strength
         if not (List.isEmpty s.Observation.Messages) then
             printfn "msg: %s" (String.concat " | " s.Observation.Messages)
-        printfn "pending: %A  over:%b" s.Pending s.Over
+        let ents =
+            s.Observation.Entities
+            |> List.filter (fun e -> e.Kind <> HeroSelf)
+            |> List.map (fun e -> sprintf "%A@(%d,%d)=%s[%s]" e.Kind e.Pos.X e.Pos.Y (defaultArg e.Name "?") e.Color)
+        if not (List.isEmpty ents) then printfn "entities: %s" (String.concat " " ents)
+        match s.Pending with
+        | Menu(title, mode, items) ->
+            printfn "MENU [%s] %A:" title mode
+            for it in items do printfn "   %c - %s" it.Key it.Text
+        | p -> printfn "pending: %A  over:%b" p s.Over
     let mutable s = engine.Start { NewGame.defaults with Name = Some "Ada" }
     show "start" s
-    for a in [ Move South; Move East; Move West; Move North; Key 's'; Move South ] do
+    // Adaptively resolve any open menu: dismiss display-only ones, otherwise
+    // select the first item (exercises returning a real selection).
+    let resolveMenus () =
+        while (match s.Pending with Menu _ -> true | _ -> false) do
+            let a =
+                match s.Pending with
+                | Menu(_, PickNone, _) -> Proceed
+                | Menu(_, _, it :: _) -> Choose [ it.Key ]
+                | _ -> Proceed
+            s <- engine.Step s a
+            show (sprintf "menu-> %A" a) s
+    for a in [ Move South; Key 'D'; Move East; Key 'i' ] do
+        resolveMenus ()
         s <- engine.Step s a
         show (sprintf "%A" a) s
+    resolveMenus ()
     0
 
 [<EntryPoint>]

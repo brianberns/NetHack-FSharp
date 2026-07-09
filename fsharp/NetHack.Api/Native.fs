@@ -37,6 +37,18 @@ module Native =
                               [<MarshalAs(UnmanagedType.LPArray,
                                           ArraySubType = UnmanagedType.LPStr)>] string[] argv)
 
+    // Decode the remembered map cell (x,y) into a category (0 skip, 1 monster,
+    // 2 pet, 3 object, 4 trap) and a name; safe only between turns.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
+    extern int private nhglue_describe_at(int x, int y, System.Text.StringBuilder buf, int buflen)
+
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern int private nhglue_anything_size()
+
+    // Build a menu_item[] (NetHack-allocated) from packed identifier bytes.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern nativeint private nhglue_build_menu(byte[] anythings, int[] counts, int count)
+
     // ---- locating the DLL / data (#5) ---------------------------------
 
     /// Explicit directory holding NetHackNative.dll + data files. When None
@@ -144,6 +156,11 @@ module Native =
     let private tryInt (s: string) =
         match Int32.TryParse(s.Trim()) with true, v -> v | _ -> 0
 
+    /// Strip NetHack "glyph in string" escapes (\G<hex>, from encglyph) that the
+    /// shim port does not render — e.g. the gold field arrives as "\G...:123".
+    let private glyphEscape = Regex(@"\\G[0-9A-Fa-f]+", RegexOptions.Compiled)
+    let private clean (s: string) = glyphEscape.Replace(s, "")
+
     let private emptyStatus : Status =
         { Title = ""; Alignment = ""; Strength = ""; Dexterity = 0; Constitution = 0
           Intelligence = 0; Wisdom = 0; Charisma = 0; HP = 0; HPMax = 0; Power = 0
@@ -226,10 +243,15 @@ module Native =
 
         // screen buffers, mutated only on the game thread
         let glyphs = Array2D.create ROWNO COLNO ' '
+        let cellColor = Array2D.create ROWNO COLNO "gray"
         let winType = System.Collections.Generic.Dictionary<int, int>()
         let statusText = System.Collections.Generic.Dictionary<int, string>()
         let messages = ResizeArray<string>()
+        // menu being built: display items, their selector->identifier bytes, title
         let menuItems = ResizeArray<MenuItem>()
+        let menuIdents = System.Collections.Generic.Dictionary<char, byte[]>()
+        let mutable menuTitle = ""
+        let mutable anythingSize = 0
 
         let mutable nextWin = 1
         let mutable condMask = 0
@@ -270,11 +292,29 @@ module Native =
                 [ for y in 0 .. ROWNO - 1 ->
                     String(Array.init COLNO (fun x -> glyphs[y, x])) ]
             let hero = { X = heroX; Y = heroY }
-            let entities =
-                [ { Pos = hero; Symbol = '@'; Kind = HeroSelf
-                    Name = Some "you"; Color = "white"; Glyph = 0 } ]
+            let entities = ResizeArray<Entity>()
+            entities.Add { Pos = hero; Symbol = '@'; Kind = HeroSelf
+                           Name = Some "you"; Color = "white"; Glyph = 0 }
+            // Decode monsters / objects / traps at each drawn cell into named
+            // entities (features/terrain stay in the ASCII map).
+            let sb = System.Text.StringBuilder(96)
+            for y in 0 .. ROWNO - 1 do
+                for x in 0 .. COLNO - 1 do
+                    if glyphs[y, x] <> ' ' && not (x = heroX && y = heroY) then
+                        sb.Clear() |> ignore
+                        match nhglue_describe_at(x, y, sb, sb.Capacity) with
+                        | 0 -> ()
+                        | cat ->
+                            let kind =
+                                match cat with
+                                | 1 -> Monster | 2 -> Pet | 3 -> GlyphKind.Object
+                                | 4 -> Trap | _ -> Unexplored
+                            entities.Add
+                                { Pos = { X = x; Y = y }; Symbol = glyphs[y, x]
+                                  Kind = kind; Name = Some(sb.ToString())
+                                  Color = cellColor[y, x]; Glyph = 0 }
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
-              Entities = entities; Status = this.BuildStatus()
+              Entities = List.ofSeq entities; Status = this.BuildStatus()
               Messages = List.ofSeq messages }
 
         /// Called from the game thread when it needs input: publish the current
@@ -306,9 +346,13 @@ module Native =
                 let y = int (argAt args 2)
                 let gi = nativeint (argAt args 3)
                 if gi <> IntPtr.Zero && y >= 0 && y < ROWNO && x >= 0 && x < COLNO then
-                    // glyph_info layout (wintype.h): int glyph; int ttychar; ...
+                    // glyph_info layout (wintype.h): int glyph; int ttychar;
+                    // uint32 framecolor; glyph_map gm { ...; classic { color; } }
                     let ttychar = Marshal.ReadInt32(gi, 4)
+                    let color = Marshal.ReadInt32(gi, 16)
                     glyphs[y, x] <- char ttychar
+                    if color >= 0 && color < colorName.Length then
+                        cellColor[y, x] <- colorName[color]
             | "shim_curs" ->
                 let w = int (argAt args 0)
                 if (match winType.TryGetValue w with true, t -> t = NHW_MAP | _ -> false) then
@@ -317,23 +361,32 @@ module Native =
             | "shim_putstr" ->
                 let w = int (argAt args 0)
                 if (match winType.TryGetValue w with true, t -> t = NHW_MESSAGE | _ -> false) then
-                    let s = strAt args 2
+                    let s = clean (strAt args 2)
                     if s <> "" then messages.Add s
             | "shim_raw_print" | "shim_raw_print_bold" ->
-                let s = strAt args 0
+                let s = clean (strAt args 0)
                 if s <> "" then messages.Add s
             | "shim_status_update" ->
                 let fld = int (argAt args 0)
                 if fld = BL_CONDITION then
                     condMask <- Marshal.ReadInt32(nativeint (argAt args 1))
                 elif fld >= 0 then
-                    statusText[fld] <- strAt args 1
-            | "shim_start_menu" -> menuItems.Clear()
+                    statusText[fld] <- clean (strAt args 1)
+            | "shim_start_menu" ->
+                menuItems.Clear(); menuIdents.Clear(); menuTitle <- ""
             | "shim_add_menu" ->
+                // args: window,glyphinfo,identifier(p),ch(0),gch,attr,clr,str,itemflags
                 let ch = char (int (argAt args 3))
-                let text = strAt args 7
-                menuItems.Add { Key = ch; Text = text; Glyph = None
-                                Count = None; Selected = false }
+                let identPtr = nativeint (argAt args 2)
+                // selectable items have an accelerator and a non-null identifier
+                if ch <> '\000' && identPtr <> IntPtr.Zero then
+                    if anythingSize = 0 then anythingSize <- nhglue_anything_size ()
+                    let bytes = Array.zeroCreate<byte> anythingSize
+                    Marshal.Copy(identPtr, bytes, 0, anythingSize)
+                    menuIdents[ch] <- bytes
+                    menuItems.Add { Key = ch; Text = strAt args 7; Glyph = None
+                                    Count = None; Selected = false }
+            | "shim_end_menu" -> menuTitle <- strAt args 1
             // ---- input requests: settle points ----
             | "shim_nhgetch" | "shim_nh_poskey" ->
                 // nh_poskey has out params (x,y,mod); leave them zero.
@@ -367,11 +420,33 @@ module Native =
                     Marshal.Copy(bytes, 0, buf, bytes.Length)
                     Marshal.WriteByte(buf, bytes.Length, 0uy)
             | "shim_select_menu" ->
-                // returning selections is not wired up yet; cancel the menu.
+                let how = int (argAt args 1)
                 let outp = nativeint (argAt args 2)
-                if outp <> IntPtr.Zero then Marshal.WriteIntPtr(outp, IntPtr.Zero)
-                if not initializing then this.Settle(Menu("", PickNone, List.ofSeq menuItems)) |> ignore
-                writeInt -1
+                let cancel code =
+                    if outp <> IntPtr.Zero then Marshal.WriteIntPtr(outp, IntPtr.Zero)
+                    writeInt code
+                if initializing || menuItems.Count = 0 then
+                    cancel (if how = 0 then 0 else -1)
+                else
+                    let mode = match how with 0 -> PickNone | 1 -> PickOne | _ -> PickAny
+                    let action = this.Settle(Menu(menuTitle, mode, List.ofSeq menuItems))
+                    // how=0 is display-only (e.g. inventory): shown, then dismissed
+                    match (if how = 0 then Proceed else action) with
+                    | Choose keys when not (List.isEmpty keys) ->
+                        let picks =
+                            keys
+                            |> List.choose (fun k ->
+                                match menuIdents.TryGetValue k with true, b -> Some b | _ -> None)
+                            |> (if how = 1 then List.truncate 1 else id)
+                        if List.isEmpty picks then cancel -1
+                        else
+                            let packed = Array.zeroCreate<byte> (anythingSize * picks.Length)
+                            picks |> List.iteri (fun i b -> Array.blit b 0 packed (i * anythingSize) anythingSize)
+                            let counts = Array.create picks.Length -1
+                            let arr = nhglue_build_menu(packed, counts, picks.Length)
+                            if outp <> IntPtr.Zero then Marshal.WriteIntPtr(outp, arr)
+                            writeInt picks.Length
+                    | _ -> cancel (if how = 0 then 0 else -1)
             | "shim_get_ext_cmd" -> writeInt -1
             | "shim_message_menu" -> writeChar '\033'
             | _ -> ()   // notifications with nothing to return

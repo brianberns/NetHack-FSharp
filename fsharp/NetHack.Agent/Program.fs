@@ -17,9 +17,9 @@ open NetHack.Api
 type AgentAction =
     { [<Description("One short sentence explaining the choice.")>]
       reasoning: string
-      [<Description("One of: move, key, answer, text, number, proceed.")>]
+      [<Description("One of: move, key, answer, text, number, select, proceed.")>]
       kind: string
-      [<Description("move: N,S,E,W,NE,NW,SE,SW,up,down; key/answer: a single character; text: the line; number: an integer.")>]
+      [<Description("move: N,S,E,W,NE,NW,SE,SW,up,down; key/answer: a single character; text: the line; number: an integer; select: the menu letters to pick (e.g. \"a\" or \"ac\").")>]
       value: string }
 
 let systemPrompt = """
@@ -29,10 +29,15 @@ Each turn you receive a JSON GameState:
 - observation.rows: 21 strings, the ASCII dungeon map (row 0 is the top).
 - observation.hero: your {x,y} position (the '@').
 - observation.status: HP, level, gold, hunger, conditions, etc.
+- observation.entities: decoded things on the map, each {kind, pos:{x,y}, name,
+  color} — kind is HeroSelf, Monster, Pet, Object, or Trap. Use this to know
+  exactly what and where the nearby monsters/items are (e.g. name "jackal").
 - observation.messages: game messages since your last action.
 - pending: what the game is waiting for. "Command" = act freely.
   {type:"YesNo",question,choices} = answer it. {type:"TextLine",prompt} = type
-  a line. {type:"Menu",...} = a menu is open.
+  a line. {type:"Menu",mode,items} = a menu is open; items each have a "key"
+  letter and "text". Pick with kind "select" value the letters (e.g. "a" for one,
+  "ac" for several), or kind "proceed" to dismiss/cancel a menu.
 
 Map legend: @ you, letters = monsters (d dog, f cat, ...), . floor, # corridor,
 | - walls, + door/spellbook, { fountain, $ gold, < up stairs, > down stairs,
@@ -72,6 +77,7 @@ let toAction (a: AgentAction) : Action =
     | "answer" -> Answer(if v.Length > 0 then v.[0] else 'y')
     | "text" -> Text v
     | "number" -> (match Int32.TryParse v with true, n -> Number n | _ -> Number 0)
+    | "select" -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
     | "proceed" -> Proceed
     | _ -> Proceed
 
