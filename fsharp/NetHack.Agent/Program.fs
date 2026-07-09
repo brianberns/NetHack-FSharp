@@ -1,7 +1,6 @@
 module NetHack.Agent.Program
 
 open System
-open System.Collections.Generic
 open System.ComponentModel
 open System.ClientModel
 open System.Reflection
@@ -20,7 +19,9 @@ type AgentAction =
       [<Description("One of: move, key, answer, text, number, select, proceed.")>]
       kind: string
       [<Description("move: N,S,E,W,NE,NW,SE,SW,up,down; key/answer: a single character; text: the line; number: an integer; select: the menu letters to pick (e.g. \"a\" or \"ac\").")>]
-      value: string }
+      value: string
+      [<Description("Your running memory to carry to the next turn: current goal, what you've discovered (stairs, shops, dangers), and your plan. Keep it concise, a few lines. This is your only memory between turns.")>]
+      notes: string }
 
 let systemPrompt = """
 You are an expert NetHack player controlling a character through a JSON API.
@@ -45,6 +46,11 @@ Map legend: @ you, letters = monsters (d dog, f cat, ...), . floor, # corridor,
 
 Goal: survive, explore the level, fight weak monsters, grab useful items, and
 descend the down stairs (>). Avoid obvious death. Keep moving; never stall.
+
+You have NO conversation history. Each turn you see only the current game state
+and the short "notes" string you wrote last turn. Always rewrite "notes" with a
+concise memory to carry forward: your current goal, discoveries (where the
+stairs/shops are, dangers), and your plan. A few lines only — it is not a log.
 
 Respond with an action:
 - kind "move", value one of N,S,E,W,NE,NW,SE,SW (or up/down while on stairs).
@@ -92,7 +98,9 @@ let private setting (config: IConfiguration) key envFallback deflt =
     | v -> v
 
 let render (step: int) (s: GameState) (note: string) =
-    Console.Clear()
+    // Clear only when attached to a real console (skip when output is piped).
+    if not Console.IsOutputRedirected then
+        try Console.Clear() with _ -> ()
     for r in s.Observation.Rows do Console.WriteLine r
     let st = s.Observation.Status
     Console.WriteLine()
@@ -104,10 +112,6 @@ let render (step: int) (s: GameState) (note: string) =
     Console.WriteLine($"pending: {s.Pending}")
     if note <> "" then Console.WriteLine($"[step {step}] {note}")
     Console.WriteLine(String('-', 64))
-
-/// Keep the system message plus the most recent turns so context stays bounded.
-let private trim (messages: List<ChatMessage>) =
-    while messages.Count > 16 do messages.RemoveAt(1)
 
 /// A safe action to take when the model call keeps failing, matched to whatever
 /// the game is currently asking for.
@@ -146,13 +150,22 @@ let run (argv: string[]) : Task<int> =
 
             let engine = Native.create ()
             let mutable state = engine.Start { NewGame.defaults with Name = Some "Aiven" }
-            let messages = List<ChatMessage>()
-            messages.Add(ChatMessage(ChatRole.System, systemPrompt))
+            // The agent's only memory across turns: a short scratchpad it rewrites.
+            let mutable notes = ""
 
             let mutable step = 0
             while not state.Over && step < maxSteps do
                 step <- step + 1
-                messages.Add(ChatMessage(ChatRole.User, Json.toJson state))
+                // Each request is self-contained: system prompt + the current
+                // state and the agent's own notes. No accumulated history, so the
+                // request size stays bounded regardless of how long the game runs.
+                let user =
+                    "Current game state (JSON):\n" + Json.toJson state
+                    + "\n\nYour notes from last turn:\n"
+                    + (if notes = "" then "(none yet)" else notes)
+                let messages =
+                    [ ChatMessage(ChatRole.System, systemPrompt)
+                      ChatMessage(ChatRole.User, user) ]
                 // Ask the model, retrying a couple of times on transient failures.
                 let mutable decision : Result<AgentAction, string> = Error "no attempt"
                 let mutable attempt = 0
@@ -168,13 +181,10 @@ let run (argv: string[]) : Task<int> =
                         if attempt < 3 then do! Task.Delay 1000
                 match decision with
                 | Ok d ->
-                    messages.Add(ChatMessage(ChatRole.Assistant, Json.toJson d))
-                    trim messages
-                    render step state $"{d.kind} {d.value} — {d.reasoning}"
+                    notes <- (if isNull d.notes then "" else d.notes)
+                    render step state $"{d.kind} {d.value} — {d.reasoning}\n[notes] {notes}"
                     state <- engine.Step state (toAction d)
                 | Error msg ->
-                    // drop the unanswered user turn so the history stays paired
-                    if messages.Count > 1 then messages.RemoveAt(messages.Count - 1)
                     let fb = fallback state
                     // persist the full error so it survives the screen clears
                     try IO.File.AppendAllText("agent-errors.log", $"step {step}: {msg}\n")
