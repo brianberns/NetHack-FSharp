@@ -76,25 +76,31 @@ module Program =
 
         use wtr = new StringWriter()
 
+            // messages that led to current state
+        for msg in state.Observation.Messages do
+            wtr.WriteLine($"{msg}")
+
+            // dungeon map
         for row in state.Observation.Rows do
             wtr.WriteLine($"{row}")
 
+            // hero status
         let status = state.Observation.Status
         wtr.WriteLine()
         wtr.WriteLine($"{status.Title} T:{status.Turns} Dlvl:{status.DungeonLevel} \
             HP:{status.HP}/{status.HPMax} Pw:{status.Power}/{status.PowerMax} \
             AC:{status.ArmorClass} $:{status.Gold}")
 
-        for msg in state.Observation.Messages do
-            wtr.WriteLine(msg)
-
+            // action to take in the given state
         wtr.WriteLine()
-        wtr.WriteLine($"Action: {aa.Kind} {aa.Value}")
-        wtr.WriteLine($"Reasoning: {aa.Reasoning}")
-
+        wtr.WriteLine($"{aa.Kind} {aa.Value}")
         wtr.WriteLine()
-        wtr.WriteLine($"Note: {aa.Note}")
+        wtr.WriteLine(aa.Reasoning)
+        wtr.WriteLine()
+        wtr.WriteLine(aa.Note)
 
+            // divider
+        wtr.WriteLine()
         wtr.WriteLine(String('-', 64))
 
         wtr.ToString()
@@ -107,8 +113,9 @@ module Program =
             try Console.Clear() with _ -> ()
         Console.Write(view)
 
-        use wtr = new StreamWriter("Agent.log", append = true)
-        fprintfn wtr "%s" view
+        do
+            use wtr = new StreamWriter("Agent.log", append = true)
+            fprintfn wtr "%s" view
 
         if not Console.IsOutputRedirected then
             Console.ReadLine() |> ignore
@@ -137,27 +144,18 @@ module Program =
         | ActionKind.Select -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
         | _ -> Proceed
 
-    let rec run state aa waitNum =
-
-        let wait (duration : TimeSpan) =
-            printfn ""
-            printfn $"Waiting {duration} ({waitNum})"
-            async {
-                do! Async.Sleep(duration)
-                return! run state aa (waitNum + 1)
-            }
+    let rec run state note =
 
         async {
             try
-                render state aa
-
                 let! aa =
-                    let prompt = getPrompt state aa.Note
+                    let prompt = getPrompt state note
                     Agent.getResultAsync<AgentAction> prompt agent
+                render state aa
                 
                 let state = engine.Step state (toAction aa)
                 if state.Over then return ()
-                else return! run state aa 0
+                else return! run state aa.Note
 
             with 
                 | :? ClientResultException as exn ->
@@ -177,12 +175,5 @@ module Program =
         }
             
     let state = engine.Start NewGame.defaults
-    let aa =
-        {
-            Reasoning = ""
-            Kind = ActionKind.Proceed
-            Value = ""
-            Note = ""
-        }
-    run state aa 0
+    run state ""
         |> Async.RunSynchronously
