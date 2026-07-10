@@ -2,11 +2,15 @@ namespace NetHack.Agent
 
 open System
 open System.ClientModel
+open System.Text.RegularExpressions
 
 open Microsoft.Extensions.AI
 open Microsoft.Extensions.Configuration
 
 open OpenAI
+
+open FSharp.Data
+open FSharp.Data.JsonExtensions
 
 /// Chat model.
 type Model =
@@ -33,21 +37,39 @@ type Model =
 
 module Gemini =
 
-    let rec tryParseWaitTime (exn : Exception) =
+    let tryParseTime text =
+        let mtch = Regex.Match(text, @"([\d.]+)(ms|h|m|s)")
+        if mtch.Success then
+            let value = Double.Parse(mtch.Groups[1].Value)
+            match mtch.Groups[2].Value with
+                | "h"  -> Some (TimeSpan.FromHours(value))
+                | "m"  -> Some (TimeSpan.FromMinutes(value))
+                | "ms" -> Some (TimeSpan.FromMilliseconds(value))
+                | "s"  -> Some (TimeSpan.FromSeconds(value))
+                | _    -> None
+        else None
+
+    let rec private tryParseWaitTime (exn : Exception) =
         match exn with
+
             | :? ClientResultException as exn ->
-
-                let response = exn.GetRawResponse()
-
-                let content = response.Content.ToString()
-                printfn ""
-                printfn $"{content}"
-
-                printfn ""
-                for header in response.Headers do
-                    printfn $"{header}"
-
-                None
+                try
+                    let root =
+                        exn.GetRawResponse()
+                            .Content
+                            .ToString()
+                            |> JsonValue.Parse
+                    root.AsArray()
+                        |> Array.tryPick (fun value ->
+                            value?error?details.AsArray()
+                                |> Array.tryPick (fun detail ->
+                                    detail.Properties
+                                        |> Array.tryPick (fun (key, value) ->
+                                            if key = "retryDelay" then Some value
+                                            else None)))
+                        |> Option.bind (fun value ->
+                            value.ToString() |> tryParseTime)
+                with _ -> None
 
             | _ ->
                 if exn.InnerException = null then None
@@ -100,18 +122,6 @@ module Agent =
                 |> Seq.reduce (+)
                 |> Some
         else None
-
-    let private tryPrettyJson (text : string) =
-        try
-            use doc = JsonDocument.Parse(text)
-            let pretty =
-                JsonSerializer.Serialize(
-                    doc.RootElement,
-                    JsonSerializerOptions(
-                        WriteIndented = true,
-                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
-            Some pretty
-        with :? JsonException -> None
     *)
 
     /// Creates an agent.
