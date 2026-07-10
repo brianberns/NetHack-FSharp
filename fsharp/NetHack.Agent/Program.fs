@@ -163,12 +163,13 @@ Always include one short sentence of reasoning.
                 else return! run (stepNum + 1) state aa.notes
 
             with exn ->
-                let m = Regex.Match(exn.Message, @"try again in ([0-9.]+)s")
+                let m = Regex.Match(exn.Message, @"try again in ([0-9.]+)(ms|s)")
                 if m.Success then
                     let duration =
-                        m.Groups[1].Value
-                            |> Double.Parse
-                            |> TimeSpan.FromSeconds
+                        let value = Double.Parse(m.Groups[1].Value)
+                        match m.Groups[2].Value with
+                            | "ms" -> TimeSpan.FromMilliseconds(value)
+                            | _ -> TimeSpan.FromSeconds(value)
                     printfn $"Waiting {duration}"
                     do! Async.Sleep(duration)
                     return! run stepNum state notes
