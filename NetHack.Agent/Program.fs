@@ -118,6 +118,7 @@ module Program =
             fprintfn wtr "%s" view
 
         if not Console.IsOutputRedirected then
+            Console.Write("Press enter to continue")
             Console.ReadLine() |> ignore
 
     /// Converts the model's action into a strongly-typed NetHack.Api
