@@ -107,7 +107,7 @@ module Program =
 
     let engine = Native.create ()
 
-    let render (state : GameState) (reasoning : string) (note : string) =
+    let render (state : GameState) (aa : AgentAction) =
 
         // Clear only when attached to a real console (skip when output is piped).
         if not Console.IsOutputRedirected then
@@ -125,8 +125,9 @@ module Program =
 
         Console.WriteLine(String.concat " | " state.Observation.Messages)
         Console.WriteLine($"Expecting: {state.Pending}")
-        Console.WriteLine($"{reasoning}")
-        Console.WriteLine($"{note}")
+        Console.WriteLine($"Reasoning: {aa.Reasoning}")
+        Console.WriteLine($"Action: {aa.Kind} {aa.Value}")
+        Console.WriteLine($"Note: {aa.Note}")
         Console.WriteLine(String('-', 64))
 
         Console.Out.Flush()   // show progress even when output is piped/redirected
@@ -155,15 +156,15 @@ module Program =
         | ActionKind.Select -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
         | _ -> Proceed
 
-    let rec run state reasoning note =
+    let rec run state aa =
         task {
             try
-                render state reasoning note
+                render state aa
 
                 let messages =
                     [
                         ChatMessage(ChatRole.System, systemPrompt)
-                        ChatMessage(ChatRole.User, getUserPrompt state note)
+                        ChatMessage(ChatRole.User, getUserPrompt state aa.Note)
                     ]
                 let! response =
                     chatClient.GetResponseAsync<AgentAction>(
@@ -174,7 +175,7 @@ module Program =
                 
                 let state = engine.Step state (toAction aa)
                 if state.Over then return ()
-                else return! run state aa.Reasoning aa.Note
+                else return! run state aa
 
             with exn ->
                 let m = Regex.Match(exn.Message, @"try again in ([0-9.]+)(ms|s)")
@@ -187,12 +188,19 @@ module Program =
                     let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
                     printfn $"Waiting {duration}"
                     do! Async.Sleep(duration)
-                    return! run state reasoning note
+                    return! run state aa
                 else
                     printfn $"{exn.Message}"
         }
             
     let state = engine.Start NewGame.defaults
-    run state "" ""
+    let aa =
+        {
+            Reasoning = ""
+            Kind = ActionKind.Proceed
+            Value = ""
+            Note = ""
+        }
+    run state aa
         |> Async.AwaitTask
         |> Async.RunSynchronously
