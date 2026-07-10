@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Agent.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

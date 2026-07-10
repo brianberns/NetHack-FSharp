@@ -4,16 +4,10 @@ open System
 open System.ClientModel
 open System.ComponentModel
 open System.IO
-open System.Text.Encodings.Web
 open System.Reflection
-open System.Text.RegularExpressions
-open System.Text.Json
 open System.Text.Json.Serialization
 
-open Microsoft.Extensions.AI
 open Microsoft.Extensions.Configuration
-
-open OpenAI
 
 open NetHack.Api
 
@@ -56,43 +50,25 @@ type AgentAction =
 
 module Program =
 
-    let systemPrompt =
-        "You are an expert NetHack player controlling a character through a JSON API. \
-        Respond with an action: a 'kind' and its 'value'. \
-        Always include one short sentence of reasoning."
-
-    let getUserPrompt (state : GameState) (note : string) =
-        String.concat "\n\n" [
-            $"Current game state (JSON):\n{Json.toJson state}"
+    let getPrompt (state : GameState) (note : string) =
+        String.concat "\n" [
+            $"You are an expert NetHack player controlling a character. \
+            Respond with:
+            * An action kind and value, and \
+            * One short sentence of reasoning for this action, and \
+            * A note that contains anything you want to remember across turns. \
+            Current game state (JSON):"; Json.toJson state
             if not (String.IsNullOrWhiteSpace(note)) then
-                $"Your note from last turn:\n{note}"
+                $"Your note from last turn:"; note
         ]
 
-    let config =
-        let assembly = Assembly.GetExecutingAssembly()
-        ConfigurationBuilder()
-            .AddUserSecrets(Assembly.GetExecutingAssembly())
-            .AddEnvironmentVariables()
-            .Build()
-
-    let openAIClient =
-        OpenAIClient(
-            ApiKeyCredential(config["OpenAI:ApiKey"]),
-            OpenAIClientOptions(
-                Endpoint = Uri(config["OpenAI:BaseUrl"])))
-
-    let chatClient =
-        openAIClient
-            .GetChatClient(config["OpenAI:Model"])
-            .AsIChatClient()
-
-    let useJsonSchemaResponseFormat =
-        let setting =
-            config["OpenAI:UseJsonSchemaResponseFormat"].ToLower()
-        match setting with
-            | "false" | "f" | "0" -> false
-            | "true"  | "t" | "1" -> true
-            | _ -> true
+    let agent =
+        let config =
+            ConfigurationBuilder()
+                .AddUserSecrets(Assembly.GetExecutingAssembly())
+                .AddEnvironmentVariables()
+                .Build()
+        Agent.create config Gemini.flash2_5
 
     let engine = Native.create ()
 
@@ -129,10 +105,13 @@ module Program =
 
         if not Console.IsOutputRedirected then
             try Console.Clear() with _ -> ()
-        Console.WriteLine(view)
+        Console.Write(view)
 
         use wtr = new StreamWriter("Agent.log", append = true)
         fprintfn wtr "%s" view
+
+        if not Console.IsOutputRedirected then
+            Console.ReadLine() |> ignore
 
     /// Translate the model's action into the strongly typed NetHack.Api Action DU.
     let toAction (a: AgentAction) : Action =
@@ -158,90 +137,43 @@ module Program =
         | ActionKind.Select -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
         | _ -> Proceed
 
-    // e.g. ""try again in 3m10.7712s"
-    let tryParseWaitTime text =
-        let m = Regex.Match(text, @"try again in ([\d.hms]+)")
-        if m.Success then
-            Regex.Matches(m.Groups[1].Value, @"([\d.]+)(ms|h|m|s)")
-                |> Seq.map (fun m ->
-                    let value = Double.Parse(m.Groups[1].Value)
-                    match m.Groups[2].Value with
-                        | "h"  -> TimeSpan.FromHours value
-                        | "m"  -> TimeSpan.FromMinutes value
-                        | "ms" -> TimeSpan.FromMilliseconds value
-                        | _    -> TimeSpan.FromSeconds value)
-                |> Seq.reduce (+)
-                |> Some
-        else None
-
-    let tryPrettyJson (text : string) =
-        try
-            use doc = JsonDocument.Parse(text)
-            let pretty =
-                JsonSerializer.Serialize(
-                    doc.RootElement,
-                    JsonSerializerOptions(
-                        WriteIndented = true,
-                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
-            Some pretty
-        with :? JsonException -> None
-
     let rec run state aa waitNum =
 
         let wait (duration : TimeSpan) =
-            let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
+            printfn ""
             printfn $"Waiting {duration} ({waitNum})"
-            task {
+            async {
                 do! Async.Sleep(duration)
                 return! run state aa (waitNum + 1)
             }
 
-        task {
+        async {
             try
                 render state aa
 
-                let messages =
-                    [
-                        ChatMessage(ChatRole.System, systemPrompt)
-                        ChatMessage(ChatRole.User, getUserPrompt state aa.Note)
-                    ]
-                let! response =
-                    chatClient.GetResponseAsync<AgentAction>(
-                        messages,
-                        useJsonSchemaResponseFormat
-                            = useJsonSchemaResponseFormat)
-                let aa = response.Result
+                let! aa =
+                    let prompt = getPrompt state aa.Note
+                    Agent.getResultAsync<AgentAction> prompt agent
                 
                 let state = engine.Step state (toAction aa)
                 if state.Over then return ()
                 else return! run state aa 0
 
-            with exn ->
-                match tryParseWaitTime exn.Message with
-                    | Some duration ->
-                        return! wait duration
-                    | None ->
-                        match exn with
-                            | :? ClientResultException as exn ->
-                                if exn.Status = 429 then
-                                    let duration = TimeSpan.FromSeconds(10.0)
-                                    return! wait duration
-                                else
-                                    printfn $"{exn.Message}"
+            with 
+                | :? ClientResultException as exn ->
+                    printfn $"{exn.Message}"
 
-                                    let response = exn.GetRawResponse()
+                    let response = exn.GetRawResponse()
 
-                                    let content = response.Content.ToString()
-                                    printfn ""
-                                    match tryPrettyJson content with
-                                        | Some json -> printfn $"{json}"
-                                        | None -> printfn $"{content}"
+                    let content = response.Content.ToString()
+                    printfn ""
+                    printfn $"{content}"
 
-                                    printfn ""
-                                    for header in response.Headers do
-                                        printfn $"{header}"
-                            | _ ->
-                                printfn $"{exn.Message}"
+                    printfn ""
+                    for header in response.Headers do
+                        printfn $"{header}"
+                | exn ->
+                    printfn $"{exn.Message}"
         }
             
     let state = engine.Start NewGame.defaults
@@ -253,5 +185,4 @@ module Program =
             Note = ""
         }
     run state aa 0
-        |> Async.AwaitTask
         |> Async.RunSynchronously
