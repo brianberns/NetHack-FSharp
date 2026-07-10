@@ -22,9 +22,7 @@ type ActionKind =
     | Select = 5
     | Proceed = 6
 
-/// The structured action the model returns each turn: a typed `kind` plus a
-/// `value` argument interpreted per kind. `toAction` parses it into the strongly
-/// typed NetHack.Api.Action DU immediately, so the rest of the code is DU-based.
+/// Action DTO the model returns each turn.
 type AgentAction =
     {
         [<Description("One short sentence explaining this action.")>]
@@ -50,13 +48,10 @@ type AgentAction =
 
 module Program =
 
-    let getPrompt (state : GameState) (note : string) =
+    /// Creates a prompt for the agent based on the current state.
+    let getPrompt (state : GameState) note =
         String.concat "\n" [
             $"You are an expert NetHack player controlling a character. \
-            Respond with:
-            * An action kind and value, and \
-            * One short sentence of reasoning for this action, and \
-            * A note that contains anything you want to remember across turns. \
             Current game state (JSON):"; Json.toJson state
             if not (String.IsNullOrWhiteSpace(note)) then
                 $"Your note from last turn:"; note
@@ -74,7 +69,9 @@ module Program =
 
     let engine = Native.create ()
 
-    let createView (state : GameState) (aa : AgentAction) =
+    /// Creates a view of the given state and the action to be
+    /// taken in that state.
+    let createView state aa =
 
         use wtr = new StringWriter()
 
@@ -107,6 +104,7 @@ module Program =
 
         wtr.ToString()
 
+    /// Renders a view of the given state.
     let render state aa =
 
         let view = createView state aa
@@ -122,7 +120,8 @@ module Program =
         if not Console.IsOutputRedirected then
             Console.ReadLine() |> ignore
 
-    /// Translate the model's action into a strongly-typed NetHack.Api action.
+    /// Converts the model's action into a strongly-typed NetHack.Api
+    /// action.
     let toAction aa =
         let value = (if isNull aa.Value then "" else aa.Value).Trim()
         match aa.Kind with
