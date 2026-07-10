@@ -40,9 +40,10 @@ type AgentAction =
             Proceed: ignored.")>]
         Value : string
 
-        [<Description("Your running memory to carry to the next turn: \
-            current goal, discoveries (e.g. stairs, shops, dangers), \
-            and plan.")>]
+        [<Description("Your running memory to carry to the next turn. \
+            Include information about what you've done in the past, \
+            what you've learned, your short-term goal, and your \
+            overall plan.")>]
         Note : string
     }
 

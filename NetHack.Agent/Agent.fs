@@ -80,7 +80,7 @@ module Gemini =
     let flash2_5 =
         {
             Name = "Gemini"
-            Id = "gemini-2.5-flash"
+            Id = "gemini-3.5-flash"
             ApiKeyName = "Gemini:ApiKey"
             Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/"
             SupportsJsonSchema = true
