@@ -138,9 +138,9 @@ module Program =
     let render state aa =
 
         let view = createView state aa
+
         if not Console.IsOutputRedirected then
             try Console.Clear() with _ -> ()
-
         Console.WriteLine(view)
 
         use wtr = new StreamWriter("Agent.log", append = true)
