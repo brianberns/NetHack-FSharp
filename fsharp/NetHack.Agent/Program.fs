@@ -39,25 +39,17 @@ type AgentAction =
 
 module Program =
 
-    /// Matches an exception with JSON content.
-    let (|JsonClientError|_|) (exn : exn) =
-        match exn with
-            | :? ClientResultException as exn ->
-                let response = exn.GetRawResponse()
-                try
-                    use doc =
-                        JsonDocument.Parse(
-                            response.Content.ToString())
-                    let pretty =
-                        JsonSerializer.Serialize(
-                            doc.RootElement,
-                            JsonSerializerOptions(
-                                WriteIndented = true,
-                                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
-                    Some pretty
-                with :? JsonException ->
-                    None
-            | _ -> None
+    let tryPrettyJson (text : string) =
+        try
+            use doc = JsonDocument.Parse(text)
+            let pretty =
+                JsonSerializer.Serialize(
+                    doc.RootElement,
+                    JsonSerializerOptions(
+                        WriteIndented = true,
+                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
+            Some pretty
+        with :? JsonException -> None
 
     let systemPrompt = """
 You are an expert NetHack player controlling a character through a JSON API.
@@ -169,8 +161,19 @@ Always include one short sentence of reasoning.
                 if state.Over then return ()
                 else return! run (stepNum + 1) state aa.notes
             with
-                | JsonClientError json -> return printfn $"{json}"
-                | exn -> return printfn $"{exn.Message}"
+                | :? ClientResultException as exn ->
+                    let text =
+                        exn.GetRawResponse()
+                            .Content
+                            .ToString()
+                    let text =
+                        tryPrettyJson text
+                            |> Option.defaultValue text
+                    printfn $"Status: {exn.Status}"
+                    printfn $"{exn.Message}"
+                    printfn $"{text}"
+                | exn ->
+                    printfn $"{exn.Message}"
         }
             
     let state = engine.Start NewGame.defaults
