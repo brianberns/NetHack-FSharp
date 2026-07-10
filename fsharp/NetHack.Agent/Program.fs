@@ -157,6 +157,22 @@ module Program =
         | ActionKind.Select -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
         | _ -> Proceed
 
+    // e.g. ""try again in 3m10.7712s"
+    let tryParseWaitTime text =
+        let m = Regex.Match(text, @"try again in ([\d.hms]+)")
+        if m.Success then
+            Regex.Matches(m.Groups[1].Value, @"([\d.]+)(ms|h|m|s)")
+                |> Seq.map (fun m ->
+                    let value = Double.Parse(m.Groups[1].Value)
+                    match m.Groups[2].Value with
+                        | "h"  -> TimeSpan.FromHours value
+                        | "m"  -> TimeSpan.FromMinutes value
+                        | "ms" -> TimeSpan.FromMilliseconds value
+                        | _    -> TimeSpan.FromSeconds value)
+                |> Seq.reduce (+)
+                |> Some
+        else None
+
     let rec run state aa =
         task {
             try
@@ -179,19 +195,14 @@ module Program =
                 else return! run state aa
 
             with exn ->
-                let m = Regex.Match(exn.Message, @"try again in ([0-9.]+)(ms|s)")
-                if m.Success then
-                    let duration =
-                        let value = Double.Parse(m.Groups[1].Value)
-                        match m.Groups[2].Value with
-                            | "ms" -> TimeSpan.FromMilliseconds(value)
-                            | _ -> TimeSpan.FromSeconds(value)
-                    let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
-                    printfn $"Waiting {duration}"
-                    do! Async.Sleep(duration)
-                    return! run state aa
-                else
-                    printfn $"{exn.Message}"
+                match tryParseWaitTime exn.Message with
+                    | Some duration ->
+                        let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
+                        printfn $"Waiting {duration}"
+                        do! Async.Sleep(duration)
+                        return! run state aa
+                    | None ->
+                        printfn $"{exn.Message}"
         }
             
     let state = engine.Start NewGame.defaults
