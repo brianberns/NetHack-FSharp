@@ -271,7 +271,7 @@ module Native =
             let conds =
                 conditionBits
                 |> List.choose (fun (bit, c) -> if condMask &&& bit <> 0 then Some c else None)
-            { Title = txt 0
+            { Title = (txt 0).Trim()
               Alignment = (txt 7).Trim()
               Strength = (txt 1).Trim()
               Dexterity = tryInt (txt 2); Constitution = tryInt (txt 3)
