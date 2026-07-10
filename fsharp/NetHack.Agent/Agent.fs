@@ -32,6 +32,8 @@ type Model =
         /// the schema in the prompt.
         SupportsJsonSchema : bool
 
+        /// Looks for an embedded wait time when a 429 (too many
+        /// requests) exception occurs.
         TryParseWaitTime : Exception -> Option<TimeSpan>
     }
 
@@ -77,7 +79,7 @@ module Gemini =
 
     let flash2_5 =
         {
-            Name = "Gemini 2.5 Flash"
+            Name = "Gemini"
             Id = "gemini-2.5-flash"
             ApiKeyName = "Gemini:ApiKey"
             Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/"

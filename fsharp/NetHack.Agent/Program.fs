@@ -1,7 +1,6 @@
 namespace NetHack.Agent
 
 open System
-open System.ClientModel
 open System.ComponentModel
 open System.IO
 open System.Reflection
@@ -34,17 +33,18 @@ type AgentAction =
         [<Description("The kind of action to take.")>]
         Kind : ActionKind
 
-        [<Description("Argument for the action. Move: one of N|S|E|W|NE|NW|SE|SW. \
+        [<Description("Argument for the action. \
+            Move: one of N|S|E|W|NE|NW|SE|SW. \
             Key/Answer: a single character. \
             Text: the line to type. \
             Number: an integer. \
-            Select: the menu letters (e.g. 'a' or 'ac'. \
+            Select: the menu letters (e.g. 'a' or 'ac'). \
             Proceed: ignored.")>]
         Value : string
 
         [<Description("Your running memory to carry to the next turn: \
-            current goal, discoveries (stairs, shops, dangers), and plan. \
-            Be concise. This is your only memory between turns.")>]
+            current goal, discoveries (e.g. stairs, shops, dangers), \
+            and plan.")>]
         Note : string
     }
 
@@ -122,40 +122,59 @@ module Program =
         if not Console.IsOutputRedirected then
             Console.ReadLine() |> ignore
 
-    /// Translate the model's action into the strongly typed NetHack.Api Action DU.
-    let toAction (a: AgentAction) : Action =
-        let v = (if isNull a.Value then "" else a.Value).Trim()
-        match a.Kind with
-        | ActionKind.Move ->
-            match v.ToLowerInvariant() with
-            | "n" | "north" -> Move North
-            | "s" | "south" -> Move South
-            | "e" | "east" -> Move East
-            | "w" | "west" -> Move West
-            | "ne" | "northeast" -> Move Northeast
-            | "nw" | "northwest" -> Move Northwest
-            | "se" | "southeast" -> Move Southeast
-            | "sw" | "southwest" -> Move Southwest
-            | "up" | "<" -> Move Up
-            | "down" | ">" -> Move Down
-            | _ -> Key 's'
-        | ActionKind.Key -> if v.Length > 0 then Key v.[0] else Proceed
-        | ActionKind.Answer -> Answer(if v.Length > 0 then v.[0] else 'y')
-        | ActionKind.Text -> Text v
-        | ActionKind.Number -> (match Int32.TryParse v with true, n -> Number n | _ -> Number 0)
-        | ActionKind.Select -> Choose(v |> Seq.filter (Char.IsWhiteSpace >> not) |> Seq.toList)
-        | _ -> Proceed
+    /// Translate the model's action into a strongly-typed NetHack.Api action.
+    let toAction aa =
+        let value = (if isNull aa.Value then "" else aa.Value).Trim()
+        match aa.Kind with
+            | ActionKind.Move ->
+                match value.ToLowerInvariant() with
+                    | "n" | "north" -> Move North
+                    | "s" | "south" -> Move South
+                    | "e" | "east"  -> Move East
+                    | "w" | "west"  -> Move West
+                    | "ne" | "northeast" -> Move Northeast
+                    | "nw" | "northwest" -> Move Northwest
+                    | "se" | "southeast" -> Move Southeast
+                    | "sw" | "southwest" -> Move Southwest
+                    | "up"   | "<" -> Move Up
+                    | "down" | ">" -> Move Down
+                    | _ -> Key 's'
+            | ActionKind.Key ->
+                if value.Length > 0 then Key value[0]
+                else Proceed
+            | ActionKind.Answer ->
+                Answer (if value.Length > 0 then value[0] else 'y')
+            | ActionKind.Text ->
+                Text value
+            | ActionKind.Number ->
+                match Int32.TryParse value with
+                    | true, n -> Number n
+                    | _ -> Number 0
+            | ActionKind.Select ->
+                value
+                    |> Seq.where (Char.IsWhiteSpace >> not)
+                    |> Seq.toList
+                    |> Choose
+            | _ ->
+                Proceed
 
+    /// Runs the game from the given state.
     let rec run state note =
 
         async {
             try
+                    // get agent's action
                 let! aa =
                     let prompt = getPrompt state note
                     Agent.getResultAsync<AgentAction> prompt agent
+
+                    // display the state prior to applying the action
                 render state aa
-                
+
+                    // update game state
                 let state = engine.Step state (toAction aa)
+
+                    // play another turn?
                 if state.Over then return ()
                 else return! run state aa.Note
 
@@ -168,7 +187,13 @@ module Program =
                     | None ->
                         printfn $"{exn.Message}"
         }
-            
-    let state = engine.Start NewGame.defaults
+
+        // start a new game
+    let state =
+        { NewGame.defaults with
+            Name = Some model.Name }
+            |> engine.Start
+
+        // run the game and wait for it to finish
     run state ""
         |> Async.RunSynchronously
