@@ -187,6 +187,15 @@ module Program =
         with :? JsonException -> None
 
     let rec run state aa waitNum =
+
+        let wait (duration : TimeSpan) =
+            let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
+            printfn $"Waiting {duration} ({waitNum})"
+            task {
+                do! Async.Sleep(duration)
+                return! run state aa (waitNum + 1)
+            }
+
         task {
             try
                 render state aa
@@ -208,33 +217,31 @@ module Program =
                 else return! run state aa 0
 
             with exn ->
-
                 match tryParseWaitTime exn.Message with
                     | Some duration ->
-                        let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
-                        printfn $"Waiting {duration} ({waitNum})"
-                        printfn ""
-                        printfn $"{exn.Message}"
-                        do! Async.Sleep(duration)
-                        return! run state aa (waitNum + 1)
+                        return! wait duration
                     | None ->
-                        printfn $"{exn.Message}"
+                        match exn with
+                            | :? ClientResultException as exn ->
+                                if exn.Status = 429 then
+                                    let duration = TimeSpan.FromSeconds(10.0)
+                                    return! wait duration
+                                else
+                                    printfn $"{exn.Message}"
 
-                match exn with
-                    | :? ClientResultException as exn ->
+                                    let response = exn.GetRawResponse()
 
-                        let response = exn.GetRawResponse()
+                                    let content = response.Content.ToString()
+                                    printfn ""
+                                    match tryPrettyJson content with
+                                        | Some json -> printfn $"{json}"
+                                        | None -> printfn $"{content}"
 
-                        let content = response.Content.ToString()
-                        match tryPrettyJson content with
-                            | Some json -> printfn $"{json}"
-                            | None -> printfn $"{content}"
-
-                        printfn ""
-                        for header in response.Headers do
-                            printfn $"{header}"
-
-                    | _ -> ()
+                                    printfn ""
+                                    for header in response.Headers do
+                                        printfn $"{header}"
+                            | _ ->
+                                printfn $"{exn.Message}"
         }
             
     let state = engine.Start NewGame.defaults
