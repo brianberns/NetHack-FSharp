@@ -109,7 +109,6 @@ module Program =
 
     let render (state : GameState) (aa : AgentAction) =
 
-        // Clear only when attached to a real console (skip when output is piped).
         if not Console.IsOutputRedirected then
             try Console.Clear() with _ -> ()
 
@@ -124,13 +123,15 @@ module Program =
             AC:{status.ArmorClass} $:{status.Gold}")
 
         Console.WriteLine(String.concat " | " state.Observation.Messages)
-        Console.WriteLine($"Expecting: {state.Pending}")
-        Console.WriteLine($"Reasoning: {aa.Reasoning}")
-        Console.WriteLine($"Action: {aa.Kind} {aa.Value}")
-        Console.WriteLine($"Note: {aa.Note}")
-        Console.WriteLine(String('-', 64))
 
-        Console.Out.Flush()   // show progress even when output is piped/redirected
+        Console.WriteLine()
+        Console.WriteLine($"Action: {aa.Kind} {aa.Value}")
+        Console.WriteLine($"Reasoning: {aa.Reasoning}")
+
+        Console.WriteLine()
+        Console.WriteLine($"Note: {aa.Note}")
+
+        Console.WriteLine(String('-', 64))
 
     /// Translate the model's action into the strongly typed NetHack.Api Action DU.
     let toAction (a: AgentAction) : Action =
