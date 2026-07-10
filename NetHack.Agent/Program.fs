@@ -111,7 +111,7 @@ module Program =
         let view = createView state aa
 
         if not Console.IsOutputRedirected then
-            try Console.Clear() with _ -> ()
+            Console.Write("\x1b[3J\x1b[H\x1b[2J")   // clear console
         Console.Write(view)
 
         do
