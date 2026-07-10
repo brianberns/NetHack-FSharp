@@ -27,11 +27,31 @@ type Model =
         /// format? If not, wrapper must fall back to embedding
         /// the schema in the prompt.
         SupportsJsonSchema : bool
+
+        TryParseWaitTime : Exception -> Option<TimeSpan>
     }
 
 module Gemini =
 
-    let private supportsJsonSchema = true
+    let rec tryParseWaitTime (exn : Exception) =
+        match exn with
+            | :? ClientResultException as exn ->
+
+                let response = exn.GetRawResponse()
+
+                let content = response.Content.ToString()
+                printfn ""
+                printfn $"{content}"
+
+                printfn ""
+                for header in response.Headers do
+                    printfn $"{header}"
+
+                None
+
+            | _ ->
+                if exn.InnerException = null then None
+                else tryParseWaitTime exn.InnerException
 
     let flash2_5 =
         {
@@ -40,6 +60,7 @@ module Gemini =
             ApiKeyName = "Gemini:ApiKey"
             Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/"
             SupportsJsonSchema = true
+            TryParseWaitTime = tryParseWaitTime
         }
 
 /// Decision-making agent.

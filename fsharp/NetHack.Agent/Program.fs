@@ -62,13 +62,15 @@ module Program =
                 $"Your note from last turn:"; note
         ]
 
+    let model = Gemini.flash2_5
+
     let agent =
         let config =
             ConfigurationBuilder()
                 .AddUserSecrets(Assembly.GetExecutingAssembly())
                 .AddEnvironmentVariables()
                 .Build()
-        Agent.create config Gemini.flash2_5
+        Agent.create config model
 
     let engine = Native.create ()
 
@@ -157,21 +159,14 @@ module Program =
                 if state.Over then return ()
                 else return! run state aa.Note
 
-            with 
-                | :? ClientResultException as exn ->
-                    printfn $"{exn.Message}"
-
-                    let response = exn.GetRawResponse()
-
-                    let content = response.Content.ToString()
-                    printfn ""
-                    printfn $"{content}"
-
-                    printfn ""
-                    for header in response.Headers do
-                        printfn $"{header}"
-                | exn ->
-                    printfn $"{exn.Message}"
+            with exn ->
+                match model.TryParseWaitTime exn with
+                    | Some duration ->
+                        printfn $"Waiting {duration}"
+                        do! Async.Sleep(duration)
+                        return! run state note
+                    | None ->
+                        printfn $"{exn.Message}"
         }
             
     let state = engine.Start NewGame.defaults
