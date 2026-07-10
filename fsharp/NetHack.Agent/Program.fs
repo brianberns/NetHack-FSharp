@@ -186,7 +186,7 @@ module Program =
                 |> Some
         else None
 
-    let rec run state aa =
+    let rec run state aa waitNum =
         task {
             try
                 render state aa
@@ -205,15 +205,15 @@ module Program =
                 
                 let state = engine.Step state (toAction aa)
                 if state.Over then return ()
-                else return! run state aa
+                else return! run state aa 0
 
             with exn ->
                 match tryParseWaitTime exn.Message with
                     | Some duration ->
                         let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
-                        printfn $"Waiting {duration}"
+                        printfn $"Waiting {duration} ({waitNum})"
                         do! Async.Sleep(duration)
-                        return! run state aa
+                        return! run state aa (waitNum + 1)
                     | None ->
                         printfn $"{exn.Message}"
         }
@@ -226,6 +226,6 @@ module Program =
             Value = ""
             Note = ""
         }
-    run state aa
+    run state aa 0
         |> Async.AwaitTask
         |> Async.RunSynchronously
