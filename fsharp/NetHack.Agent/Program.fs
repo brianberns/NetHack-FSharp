@@ -5,6 +5,7 @@ open System.ClientModel
 open System.ComponentModel
 open System.Text.Encodings.Web
 open System.Reflection
+open System.Text.RegularExpressions
 open System.Text.Json
 
 open Microsoft.Extensions.AI
@@ -160,19 +161,18 @@ Always include one short sentence of reasoning.
                 let state = engine.Step state (toAction aa)
                 if state.Over then return ()
                 else return! run (stepNum + 1) state aa.notes
-            with
-                | :? ClientResultException as exn ->
-                    let text =
-                        exn.GetRawResponse()
-                            .Content
-                            .ToString()
-                    let text =
-                        tryPrettyJson text
-                            |> Option.defaultValue text
-                    printfn $"Status: {exn.Status}"
-                    printfn $"{exn.Message}"
-                    printfn $"{text}"
-                | exn ->
+
+            with exn ->
+                let m = Regex.Match(exn.Message, @"try again in ([0-9.]+)s")
+                if m.Success then
+                    let duration =
+                        m.Groups[1].Value
+                            |> Double.Parse
+                            |> TimeSpan.FromSeconds
+                    printfn $"Waiting {duration}"
+                    do! Async.Sleep(duration)
+                    return! run stepNum state notes
+                else
                     printfn $"{exn.Message}"
         }
             
