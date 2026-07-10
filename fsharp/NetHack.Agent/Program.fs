@@ -2,6 +2,7 @@ namespace NetHack.Agent
 
 open System
 open System.ClientModel
+open System.ComponentModel
 open System.Reflection
 open System.Text.Json
 
@@ -11,6 +12,29 @@ open Microsoft.Extensions.Configuration
 open OpenAI
 
 open NetHack.Api
+
+/// The kinds of action the model may choose. As a string enum this schematizes
+/// to a constrained set the structured-output layer enforces exactly. (A full
+/// F# discriminated union cannot be used here: System.Text.Json reports it an
+/// "unsupported type", and with the FSharp.SystemTextJson converter the schema
+/// collapses to "any", which strict structured output rejects.)
+[<System.Text.Json.Serialization.JsonConverter(typeof<System.Text.Json.Serialization.JsonStringEnumConverter>)>]
+type ActionKind =
+    | Move = 0 | Key = 1 | Answer = 2 | Text = 3 | Number = 4 | Select = 5 | Proceed = 6
+
+/// The structured action the model returns each turn: a typed `kind` plus a
+/// `value` argument interpreted per kind. `toAction` parses it into the strongly
+/// typed NetHack.Api.Action DU immediately, so the rest of the code is DU-based.
+[<CLIMutable>]
+type AgentAction =
+    { [<Description("One short sentence explaining the choice.")>]
+      reasoning: string
+      [<Description("The kind of action to take.")>]
+      kind: ActionKind
+      [<Description("Argument for the action. Move: one of N,S,E,W,NE,NW,SE,SW,up,down. Key/Answer: a single character. Text: the line to type. Number: an integer. Select: the menu letters (e.g. \"a\" or \"ac\"). Proceed: ignored.")>]
+      value: string
+      [<Description("Your running memory to carry to the next turn: current goal, discoveries (stairs, shops, dangers), and plan. Concise; this is your only memory between turns.")>]
+      notes: string }
 
 module Program =
 
