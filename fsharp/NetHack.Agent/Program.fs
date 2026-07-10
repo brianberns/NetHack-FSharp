@@ -3,6 +3,7 @@ namespace NetHack.Agent
 open System
 open System.ClientModel
 open System.ComponentModel
+open System.IO
 open System.Text.Encodings.Web
 open System.Reflection
 open System.Text.RegularExpressions
@@ -107,31 +108,43 @@ module Program =
 
     let engine = Native.create ()
 
-    let render (state : GameState) (aa : AgentAction) =
+    let createView (state : GameState) (aa : AgentAction) =
 
-        if not Console.IsOutputRedirected then
-            try Console.Clear() with _ -> ()
+        use wtr = new StringWriter()
 
         for row in state.Observation.Rows do
-            Console.WriteLine(row)
+            wtr.WriteLine($"{row}")
 
         let status = state.Observation.Status
-        Console.WriteLine()
-        Console.WriteLine(
-            $"{status.Title} T:{status.Turns} Dlvl:{status.DungeonLevel} \
+        wtr.WriteLine()
+        wtr.WriteLine($"{status.Title} T:{status.Turns} Dlvl:{status.DungeonLevel} \
             HP:{status.HP}/{status.HPMax} Pw:{status.Power}/{status.PowerMax} \
             AC:{status.ArmorClass} $:{status.Gold}")
 
-        Console.WriteLine(String.concat " | " state.Observation.Messages)
+        for msg in state.Observation.Messages do
+            wtr.WriteLine(msg)
 
-        Console.WriteLine()
-        Console.WriteLine($"Action: {aa.Kind} {aa.Value}")
-        Console.WriteLine($"Reasoning: {aa.Reasoning}")
+        wtr.WriteLine()
+        wtr.WriteLine($"Action: {aa.Kind} {aa.Value}")
+        wtr.WriteLine($"Reasoning: {aa.Reasoning}")
 
-        Console.WriteLine()
-        Console.WriteLine($"Note: {aa.Note}")
+        wtr.WriteLine()
+        wtr.WriteLine($"Note: {aa.Note}")
 
-        Console.WriteLine(String('-', 64))
+        wtr.WriteLine(String('-', 64))
+
+        wtr.ToString()
+
+    let render state aa =
+
+        let view = createView state aa
+        if not Console.IsOutputRedirected then
+            try Console.Clear() with _ -> ()
+
+        Console.WriteLine(view)
+
+        use wtr = new StreamWriter("Agent.log", append = true)
+        fprintfn wtr "%s" view
 
     /// Translate the model's action into the strongly typed NetHack.Api Action DU.
     let toAction (a: AgentAction) : Action =
