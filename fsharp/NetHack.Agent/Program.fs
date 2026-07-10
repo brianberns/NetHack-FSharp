@@ -56,18 +56,6 @@ type AgentAction =
 
 module Program =
 
-    let tryPrettyJson (text : string) =
-        try
-            use doc = JsonDocument.Parse(text)
-            let pretty =
-                JsonSerializer.Serialize(
-                    doc.RootElement,
-                    JsonSerializerOptions(
-                        WriteIndented = true,
-                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
-            Some pretty
-        with :? JsonException -> None
-
     let systemPrompt =
         "You are an expert NetHack player controlling a character through a JSON API. \
         Respond with an action: a 'kind' and its 'value'. \
@@ -186,6 +174,18 @@ module Program =
                 |> Some
         else None
 
+    let tryPrettyJson (text : string) =
+        try
+            use doc = JsonDocument.Parse(text)
+            let pretty =
+                JsonSerializer.Serialize(
+                    doc.RootElement,
+                    JsonSerializerOptions(
+                        WriteIndented = true,
+                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
+            Some pretty
+        with :? JsonException -> None
+
     let rec run state aa waitNum =
         task {
             try
@@ -208,14 +208,33 @@ module Program =
                 else return! run state aa 0
 
             with exn ->
+
                 match tryParseWaitTime exn.Message with
                     | Some duration ->
                         let duration = duration + TimeSpan.FromSeconds(1.0)   // add a safety margin
                         printfn $"Waiting {duration} ({waitNum})"
+                        printfn ""
+                        printfn $"{exn.Message}"
                         do! Async.Sleep(duration)
                         return! run state aa (waitNum + 1)
                     | None ->
                         printfn $"{exn.Message}"
+
+                match exn with
+                    | :? ClientResultException as exn ->
+
+                        let response = exn.GetRawResponse()
+
+                        let content = response.Content.ToString()
+                        match tryPrettyJson content with
+                            | Some json -> printfn $"{json}"
+                            | None -> printfn $"{content}"
+
+                        printfn ""
+                        for header in response.Headers do
+                            printfn $"{header}"
+
+                    | _ -> ()
         }
             
     let state = engine.Start NewGame.defaults
