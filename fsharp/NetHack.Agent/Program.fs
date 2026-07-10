@@ -62,40 +62,14 @@ module Program =
     let systemPrompt = """
 You are an expert NetHack player controlling a character through a JSON API.
 
-Each turn you receive a JSON GameState:
-- observation.rows: 21 strings, the ASCII dungeon map (row 0 is the top).
-- observation.hero: your {x,y} position (the '@').
-- observation.status: HP, level, gold, hunger, conditions, etc.
-- observation.entities: decoded things on the map, each {kind, pos:{x,y}, name,
-    color} — kind is HeroSelf, Monster, Pet, Object, or Trap. Use this to know
-    exactly what and where the nearby monsters/items are (e.g. name "jackal").
-- observation.messages: game messages since your last action.
-- pending: what the game is waiting for. "Command" = act freely.
-    {type:"YesNo",question,choices} = answer it. {type:"TextLine",prompt} = type
-    a line. {type:"Menu",mode,items} = a menu is open; items each have a "key"
-    letter and "text". Pick with kind "select" value the letters (e.g. "a" for one,
-    "ac" for several), or kind "proceed" to dismiss/cancel a menu.
-
-Map legend: @ you, letters = monsters (d dog, f cat, ...), . floor, # corridor,
-| - walls, + door/spellbook, { fountain, $ gold, < up stairs, > down stairs,
-) weapon, [ armor, ! potion, ? scroll, / wand, % food, space = unexplored.
-
-Goal: survive, explore the level, fight weak monsters, grab useful items, and
-descend the down stairs (>). Avoid obvious death. Keep moving; never stall.
-
-You have NO conversation history. Each turn you see only the current game state
-and the short "notes" string you wrote last turn. Always rewrite "notes" with a
-concise memory to carry forward: your current goal, discoveries (where the
-stairs/shops are, dangers), and your plan. A few lines only — it is not a log.
-
 Respond with an action: a "kind" and its "value".
-- Move: value one of N,S,E,W,NE,NW,SE,SW (or up/down while on stairs).
-- Key: value a single command key (s search, i inventory, , pickup,
+- Move: one of N,S,E,W,NE,NW,SE,SW.
+- Key: a single command key (s search, i inventory, p pickup,
     o open, > descend, < ascend).
-- Answer: value "y" or "n" (only when pending is YesNo).
-- Text: value the line to type (only when pending is TextLine).
-- Number: value an integer (when asked for a quantity).
-- Select: value the menu letters to choose (e.g. "a" or "ac"), when a Menu is open.
+- Answer: "y" or "n" (only when pending is YesNo).
+- Text: the line to type (only when pending is TextLine).
+- Number: an integer (when asked for a quantity).
+- Select: the menu letters to choose (e.g. "a" or "ac"), when a Menu is open.
 - Proceed: dismiss a menu or prompt.
 Always include one short sentence of reasoning.
 """
