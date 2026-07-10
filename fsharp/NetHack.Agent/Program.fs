@@ -3,6 +3,7 @@ namespace NetHack.Agent
 open System
 open System.ClientModel
 open System.ComponentModel
+open System.Text.Encodings.Web
 open System.Reflection
 open System.Text.Json
 
@@ -51,7 +52,8 @@ module Program =
                         JsonSerializer.Serialize(
                             doc.RootElement,
                             JsonSerializerOptions(
-                                WriteIndented = true))
+                                WriteIndented = true,
+                                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))   // avoid escaping Unicode characters
                     Some pretty
                 with :? JsonException ->
                     None
