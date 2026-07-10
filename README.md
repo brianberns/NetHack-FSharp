@@ -15,11 +15,11 @@ P/Invoke.
 | Path | What it is |
 |------|------------|
 | `Core/` | NetHack 5.0 source, as a git **submodule** → [`brianberns/NetHack`](https://github.com/brianberns/NetHack) branch `libnh-shim`. Adds a `NetHackNative` DLL build (the shim window port exposed as a callable library: `nhmain`, `nhglue_set_handler`, glyph/menu helpers) on top of upstream NetHack. |
-| `fsharp/NetHack.Api/` | The API library: domain types (`GameState`, `Observation`, `Action`, `Prompt`, …), JSON, an in-process `Stub` engine, and the real `Native` engine (P/Invoke into `NetHackNative.dll`). |
-| `fsharp/native/` | C glue compiled into the DLL — `nhglue.c` (variadic→fixed callback trampoline), `nhglue_ext.c` (glyph decode + menu building), and `nethack_exports.def`. |
-| `fsharp/NetHack.Cli/` | Interactive and scripted console over the API. |
-| `fsharp/NetHack.Agent/` | An LLM (Microsoft.Extensions.AI + OpenAI) plays via the API. |
-| `fsharp/NetHack.Tests/` | xUnit tests (against the `Stub` engine). |
+| `NetHack.Api/` | The API library: domain types (`GameState`, `Observation`, `Action`, `Prompt`, …), JSON, an in-process `Stub` engine, and the real `Native` engine (P/Invoke into `NetHackNative.dll`). |
+| `native/` | C glue compiled into the DLL — `nhglue.c` (variadic→fixed callback trampoline), `nhglue_ext.c` (glyph decode + menu building), and `nethack_exports.def`. |
+| `NetHack.Cli/` | Interactive and scripted console over the API. |
+| `NetHack.Agent/` | An LLM (Microsoft.Extensions.AI + OpenAI) plays via the API. |
+| `NetHack.Tests/` | xUnit tests (against the `Stub` engine). |
 
 ## Prerequisites
 
@@ -110,9 +110,9 @@ variable or `NetHack.Api.Native.dataDirOverride` if it lives elsewhere.
 ### CLI
 
 ```sh
-dotnet run --project fsharp/NetHack.Cli          # real NetHack (default)
-dotnet run --project fsharp/NetHack.Cli -- --stub    # in-process fake engine, no DLL needed
-dotnet run --project fsharp/NetHack.Cli -- native-demo   # scripted, non-interactive
+dotnet run --project NetHack.Cli          # real NetHack (default)
+dotnet run --project NetHack.Cli -- --stub    # in-process fake engine, no DLL needed
+dotnet run --project NetHack.Cli -- native-demo   # scripted, non-interactive
 ```
 
 Interactive keys: `hjkl`/`yubn` move, `q` quaff, `s` search, `i` inventory,
@@ -121,7 +121,7 @@ Interactive keys: `hjkl`/`yubn` move, `q` quaff, `s` search, `i` inventory,
 ### Tests
 
 ```sh
-dotnet test fsharp/NetHack.Tests
+dotnet test NetHack.Tests
 ```
 
 ### LLM agent
@@ -129,13 +129,13 @@ dotnet test fsharp/NetHack.Tests
 Credentials are read from user secrets (kept out of the repo):
 
 ```sh
-dotnet user-secrets set "OpenAI:ApiKey" "sk-..." --project fsharp/NetHack.Agent
+dotnet user-secrets set "OpenAI:ApiKey" "sk-..." --project NetHack.Agent
 # optional:
 #   OpenAI:Model         (default gpt-4o-mini)
 #   OpenAI:BaseUrl       (OpenAI-compatible endpoints, e.g. GitHub Models)
 #   OpenAI:StepDelayMs   (pace requests; raise on rate-limited tiers)
 #   OpenAI:TimeoutSeconds (per-call hard timeout)
-dotnet run --project fsharp/NetHack.Agent -- 40   # 40 = step budget
+dotnet run --project NetHack.Agent -- 40   # 40 = step budget
 ```
 
 The agent sends the `GameState` as JSON each turn and gets back a structured
