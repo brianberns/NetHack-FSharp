@@ -121,6 +121,7 @@ type Observation = {
     Width    : int             // 80
     Height   : int             // 21
     Rows      : string list    // ASCII map, one string per row — human-readable
+    Legend    : Map<string, string> // meaning of each known terrain symbol in Rows, e.g. "#" -> "corridor"
     Hero      : Pos
     Character : Character      // who the hero is: role / race / gender / alignment
     Entities  : Entity list    // decoded monsters / objects / features / traps

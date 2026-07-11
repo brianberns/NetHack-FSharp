@@ -42,6 +42,10 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_describe_at(int x, int y, System.Text.StringBuilder buf, int buflen)
 
+    // Concise terrain name for the known background glyph at a cell (else 0).
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
+    extern int private nhglue_feature_at(int x, int y, System.Text.StringBuilder buf, int buflen)
+
     // Report the hero's role / race / gender into three buffers.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern void private nhglue_hero_ident(
@@ -194,6 +198,7 @@ module Native =
     let private emptyObservation : Observation =
         { Width = COLNO; Height = ROWNO
           Rows = [ for _ in 1 .. ROWNO -> String(' ', COLNO) ]
+          Legend = Map.empty
           Hero = { X = 0; Y = 0 }; Character = emptyCharacter
           Entities = []; Status = emptyStatus; Messages = [] }
 
@@ -322,6 +327,32 @@ module Native =
             { Role = role.ToString().Trim(); Race = race.ToString().Trim()
               Gender = gender.ToString().Trim() }
 
+        /// Build the map legend: for each terrain symbol drawn this turn, the
+        /// distinct NetHack feature name(s) it stands for (collisions joined with
+        /// "or", e.g. "#" -> "corridor or tree"). Only cells whose terrain the
+        /// hero actually knows are classified; unexplored blanks are left out.
+        member private _.BuildLegend() : Map<string, string> =
+            let acc =
+                System.Collections.Generic.Dictionary<
+                    char, System.Collections.Generic.SortedSet<string>>()
+            let sb = System.Text.StringBuilder(48)
+            for y in 0 .. ROWNO - 1 do
+                for x in 0 .. COLNO - 1 do
+                    sb.Clear() |> ignore
+                    if nhglue_feature_at(x, y, sb, sb.Capacity) <> 0 then
+                        let name = sb.ToString().Trim()
+                        if name <> "" then
+                            let ch = glyphs[y, x]
+                            match acc.TryGetValue ch with
+                            | true, set -> set.Add name |> ignore
+                            | _ ->
+                                let set = System.Collections.Generic.SortedSet<string>()
+                                set.Add name |> ignore
+                                acc[ch] <- set
+            acc
+            |> Seq.map (fun kv -> string kv.Key, String.concat " or " kv.Value)
+            |> Map.ofSeq
+
         member private this.BuildObservation() : Observation =
             let rows =
                 [ for y in 0 .. ROWNO - 1 ->
@@ -349,6 +380,7 @@ module Native =
                                   Kind = kind; Name = Some(sb.ToString())
                                   Color = cellColor[y, x]; Glyph = 0 }
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
+              Legend = this.BuildLegend()
               Character = this.BuildCharacter()
               Entities = List.ofSeq entities; Status = this.BuildStatus()
               Messages = List.ofSeq messages }

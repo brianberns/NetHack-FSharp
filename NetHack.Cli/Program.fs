@@ -85,6 +85,10 @@ let private nativeDemo () =
             |> List.filter (fun e -> e.Kind <> HeroSelf)
             |> List.map (fun e -> sprintf "%A@(%d,%d)=%s[%s]" e.Kind e.Pos.X e.Pos.Y (defaultArg e.Name "?") e.Color)
         if not (List.isEmpty ents) then printfn "entities: %s" (String.concat " " ents)
+        let legend =
+            s.Observation.Legend |> Map.toList
+            |> List.map (fun (sym, name) -> sprintf "%s=%s" sym name)
+        if not (List.isEmpty legend) then printfn "legend: %s" (String.concat "  " legend)
         match s.Pending with
         | Menu(title, mode, items) ->
             printfn "MENU [%s] %A:" title mode

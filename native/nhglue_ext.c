@@ -105,6 +105,36 @@ nhglue_input_state(void)
 }
 
 /*
+ * Concise terrain/feature name for the *displayed* glyph at map cell (x,y) —
+ * e.g. "corridor", "wall", "staircase up", "fountain", "stone". Uses only what
+ * the UI shows (glyph_at), so it reports only terrain the hero actually knows.
+ * Fills buf and returns 1 for identified background (cmap) cells; returns 0 for
+ * unexplored blanks (deliberately unlabelled — the hero can't tell rock from
+ * undiscovered floor) and for foreground glyphs (monster/object/trap), which
+ * are already reported as entities. Lets the F# side build an accurate legend.
+ */
+int nhglue_feature_at(int x, int y, char *buf, int buflen);
+
+int
+nhglue_feature_at(int x, int y, char *buf, int buflen)
+{
+    int glyph;
+
+    if (buf && buflen > 0)
+        buf[0] = '\0';
+    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO)
+        return 0;
+    glyph = glyph_at(x, y);
+    if (glyph_is_cmap(glyph)) {
+        /* defsyms[].explanation is the concise generic name in the drawing
+           build of the table (S_vwall -> "wall", S_corr -> "corridor"). */
+        copy_name(buf, buflen, defsyms[glyph_to_cmap(glyph)].explanation);
+        return 1;
+    }
+    return 0; /* unexplored blank, or foreground (an entity) */
+}
+
+/*
  * Index of the extended command named `name` (e.g. "loot", "pray") in
  * extcmdlist[], or -1 if there is no such command. get_ext_cmd() returns such
  * an index, so this lets the F# side answer an Action.Extended by name. Case

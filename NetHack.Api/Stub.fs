@@ -75,9 +75,13 @@ module Stub =
     let private character : Character =
         { Role = "Valkyrie"; Race = "human"; Gender = "female" }
 
+    let private legend : Map<string, string> =
+        Map [ ".", "floor of a room"; "|", "wall"; "-", "wall"; "{", "fountain" ]
+
     let private observe (w: World) (messages: string list) : Observation =
         { Width = width; Height = height
-          Rows = rows w; Hero = w.Hero; Character = character; Entities = entities w
+          Rows = rows w; Legend = legend; Hero = w.Hero
+          Character = character; Entities = entities w
           Status = status w; Messages = messages }
 
     let private state (w: World) (messages: string list) (pending: Prompt) : GameState =
