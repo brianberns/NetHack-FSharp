@@ -10,9 +10,11 @@ let private draw (s: GameState) =
     for row in o.Rows do
         Console.WriteLine(row)
     let st = o.Status
+    let ch = o.Character
     Console.WriteLine()
+    Console.WriteLine($"{st.Title}   {ch.Gender} {ch.Race} {ch.Role}")
     Console.WriteLine(
-        $"{st.Title}   St:{st.Strength} Dx:{st.Dexterity} Co:{st.Constitution} "
+        $"St:{st.Strength} Dx:{st.Dexterity} Co:{st.Constitution} "
         + $"In:{st.Intelligence} Wi:{st.Wisdom} Ch:{st.Charisma} {st.Alignment}")
     Console.WriteLine(
         $"Dlvl:{st.DungeonLevel}  $:{st.Gold}  HP:{st.HP}({st.HPMax})  "
@@ -71,8 +73,10 @@ let private nativeDemo () =
         printfn "\n----- %s -----" label
         for r in s.Observation.Rows do printfn "%s" r
         let st = s.Observation.Status
-        printfn "%s  T:%d Dlvl:%d HP:%d(%d) Pw:%d(%d) AC:%d $:%d Str:%s"
-            st.Title st.Turns st.DungeonLevel st.HP st.HPMax st.Power st.PowerMax
+        let ch = s.Observation.Character
+        printfn "%s  [%s %s %s, %s]" st.Title ch.Gender ch.Race ch.Role st.Alignment
+        printfn "T:%d Dlvl:%d HP:%d(%d) Pw:%d(%d) AC:%d $:%d Str:%s"
+            st.Turns st.DungeonLevel st.HP st.HPMax st.Power st.PowerMax
             st.ArmorClass st.Gold st.Strength
         if not (List.isEmpty s.Observation.Messages) then
             printfn "msg: %s" (String.concat " | " s.Observation.Messages)

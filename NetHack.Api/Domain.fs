@@ -52,6 +52,16 @@ type Condition =
     | Paralyzed | Sleeping | Unconscious
     | BareHanded
 
+/// The hero's "background" identity — role, race, and gender. Unlike the
+/// status line, these are not shown in the core game's on-screen display.
+/// Mostly fixed at character creation, but gender can change mid-game (via an
+/// amulet of change), so it is reported fresh each turn alongside the map.
+type Character = {
+    Role   : string                // "Valkyrie", "Healer", "Wizard", ...
+    Race   : string                // "human", "elf", "dwarf", "gnome", "orc"
+    Gender : string                // "male", "female", "neuter"
+}
+
 /// The status line, delivered field-by-field via win_status_update.
 type Status = {
     Title        : string          // "Elbereth the Gallant"
@@ -110,11 +120,12 @@ type Prompt =
 type Observation = {
     Width    : int             // 80
     Height   : int             // 21
-    Rows     : string list     // ASCII map, one string per row — human-readable
-    Hero     : Pos
-    Entities : Entity list     // decoded monsters / objects / features / traps
-    Status   : Status
-    Messages : string list     // messages produced by the action that led here
+    Rows      : string list    // ASCII map, one string per row — human-readable
+    Hero      : Pos
+    Character : Character      // who the hero is: role / race / gender / alignment
+    Entities  : Entity list    // decoded monsters / objects / features / traps
+    Status    : Status
+    Messages  : string list    // messages produced by the action that led here
 }
 
 /// The value the API is a function of. `Session` is an opaque token the server

@@ -42,6 +42,13 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_describe_at(int x, int y, System.Text.StringBuilder buf, int buflen)
 
+    // Report the hero's role / race / gender into three buffers.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
+    extern void private nhglue_hero_ident(
+        System.Text.StringBuilder role, int rolelen,
+        System.Text.StringBuilder race, int racelen,
+        System.Text.StringBuilder gender, int genderlen)
+
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_anything_size()
 
@@ -168,10 +175,14 @@ module Native =
           Dungeon = ""; DungeonLevel = 0; Depth = 0; Hunger = NotHungry
           Encumbrance = None; Conditions = []; Turns = 0L; Score = None }
 
+    let private emptyCharacter : Character =
+        { Role = ""; Race = ""; Gender = "" }
+
     let private emptyObservation : Observation =
         { Width = COLNO; Height = ROWNO
           Rows = [ for _ in 1 .. ROWNO -> String(' ', COLNO) ]
-          Hero = { X = 0; Y = 0 }; Entities = []; Status = emptyStatus; Messages = [] }
+          Hero = { X = 0; Y = 0 }; Character = emptyCharacter
+          Entities = []; Status = emptyStatus; Messages = [] }
 
     // ---- environment & playground (#6) --------------------------------
 
@@ -287,6 +298,15 @@ module Native =
               Conditions = conds
               Turns = digits (txt 16); Score = Some(digits (txt 8)) }
 
+        member private _.BuildCharacter() : Character =
+            let role   = System.Text.StringBuilder(64)
+            let race   = System.Text.StringBuilder(64)
+            let gender = System.Text.StringBuilder(32)
+            nhglue_hero_ident(role, role.Capacity, race, race.Capacity,
+                              gender, gender.Capacity)
+            { Role = role.ToString().Trim(); Race = race.ToString().Trim()
+              Gender = gender.ToString().Trim() }
+
         member private this.BuildObservation() : Observation =
             let rows =
                 [ for y in 0 .. ROWNO - 1 ->
@@ -314,6 +334,7 @@ module Native =
                                   Kind = kind; Name = Some(sb.ToString())
                                   Color = cellColor[y, x]; Glyph = 0 }
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
+              Character = this.BuildCharacter()
               Entities = List.ofSeq entities; Status = this.BuildStatus()
               Messages = List.ofSeq messages }
 

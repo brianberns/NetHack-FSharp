@@ -72,9 +72,12 @@ module Stub =
           Hunger = NotHungry; Encumbrance = None; Conditions = []
           Turns = w.Turns; Score = Some 0L }
 
+    let private character : Character =
+        { Role = "Valkyrie"; Race = "human"; Gender = "female" }
+
     let private observe (w: World) (messages: string list) : Observation =
         { Width = width; Height = height
-          Rows = rows w; Hero = w.Hero; Entities = entities w
+          Rows = rows w; Hero = w.Hero; Character = character; Entities = entities w
           Status = status w; Messages = messages }
 
     let private state (w: World) (messages: string list) (pending: Prompt) : GameState =

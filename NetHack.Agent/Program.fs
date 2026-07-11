@@ -87,9 +87,20 @@ module Program =
             // hero status
         let status = state.Observation.Status
         wtr.WriteLine()
-        wtr.WriteLine($"{status.Title} T:{status.Turns} Dlvl:{status.DungeonLevel} \
-            HP:{status.HP}/{status.HPMax} Pw:{status.Power}/{status.PowerMax} \
-            AC:{status.ArmorClass} $:{status.Gold}")
+        wtr.WriteLine($"{status.Title} \
+            St:{status.Strength} \
+            Dx:{status.Dexterity} \
+            Co:{status.Constitution} \
+            In:{status.Intelligence} \
+            Wi:{status.Wisdom} \
+            Ch:{status.Charisma} \
+            {status.Alignment}")
+        wtr.WriteLine($"Dlvl:{status.DungeonLevel} \
+            $:{status.Gold} \
+            HP:{status.HP}/{status.HPMax} \
+            Pw:{status.Power}/{status.PowerMax} \
+            AC:{status.ArmorClass} \
+            T:{status.Turns}")
 
             // action to take in the given state
         wtr.WriteLine()

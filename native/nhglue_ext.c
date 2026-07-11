@@ -65,6 +65,30 @@ nhglue_describe_at(int x, int y, char *buf, int buflen)
     return category;
 }
 
+/*
+ * Report the hero's "background" identity into three caller-provided buffers:
+ * role name ("Valkyrie", "Healer"), race noun ("human", "elf") and gender
+ * ("male", "female", ...). Alignment is omitted here because it is already on
+ * the status line. Read fresh from the live globals each call, so a mid-game
+ * change (e.g. gender via an amulet of change) is reflected. Any buffer may be
+ * null to skip it.
+ */
+void nhglue_hero_ident(char *role, int rolelen, char *race, int racelen,
+                       char *gender, int genderlen);
+
+void
+nhglue_hero_ident(char *role, int rolelen, char *race, int racelen,
+                  char *gender, int genderlen)
+{
+    int g = Ugender; /* 0 male, 1 female; honours polymorph */
+    const char *rolename =
+        (g && gu.urole.name.f) ? gu.urole.name.f : gu.urole.name.m;
+
+    copy_name(role, rolelen, rolename);
+    copy_name(race, racelen, gu.urace.noun);
+    copy_name(gender, genderlen, genders[g].adj);
+}
+
 /* Size of the `anything` identifier union, so the F# side can pack a copy. */
 int nhglue_anything_size(void);
 
