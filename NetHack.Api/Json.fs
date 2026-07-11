@@ -1,5 +1,6 @@
 namespace NetHack.Api
 
+open System.Text.Encodings.Web
 open System.Text.Json
 open System.Text.Json.Serialization
 
@@ -19,6 +20,10 @@ module Json =
                 .WithSkippableOptionFields()     // None -> field omitted
         let o = JsonSerializerOptions(JsonSerializerDefaults.Web)
         o.WriteIndented <- true
+        // Only escape what JSON strictly requires, so the ASCII map stays
+        // readable (default encoder mangles '+', '<', '>' to \uXXXX). Safe here:
+        // output is for the LLM/console, not embedded in HTML.
+        o.Encoder <- JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         o.Converters.Add(JsonFSharpConverter(fsharp))
         o
 
