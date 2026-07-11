@@ -22,6 +22,7 @@ type ActionKind =
     | Select = 5
     | Proceed = 6
     | Extended = 7
+    | Cancel = 8
 
 /// Action DTO the model returns each turn.
 type AgentAction =
@@ -36,7 +37,7 @@ type AgentAction =
             Number: an integer. \
             Select: the menu letters (e.g. 'a' or 'ac'). \
             Extended: an extended command name (e.g. loot, pray, etc.). \
-            Proceed: ignored.")>]
+            Proceed/Cancel: ignored.")>]
         Value : string
 
         [<Description("A sentence quantifying the expected result of \
@@ -55,13 +56,16 @@ module Program =
     /// Provides guidance for responding to a prompt.
     let getGuidance = function
         | Direction _ ->
-            "Specify a direction via Kind=Move."
+            "Specify a direction via Kind=Move, or Kind=Cancel to back out."
         | MultiChoice(_, choices, _) ->
-            $"Reply Kind=Answer, Value one character from \"{choices}\"."
+            let options =
+                if choices = "" then "one of the characters offered in the question"
+                else $"one character from \"{choices}\""
+            $"Reply Kind=Answer, Value {options}; or Kind=Cancel to back out."
         | Quantity _ ->
-            "Specify a quantity via Kind=Number."
+            "Specify a quantity via Kind=Number, or Kind=Cancel to back out."
         | TextLine _ ->
-            "Reply Kind=Text."
+            "Reply Kind=Text, or Kind=Cancel to back out."
         | Menu(_, PickNone, _) ->
             "Reply Kind=Proceed to dismiss the menu."
         | Menu _ ->
@@ -214,6 +218,8 @@ module Program =
                 Text value
             | ActionKind.Extended ->
                 Extended value
+            | ActionKind.Cancel ->
+                Cancel
             | ActionKind.Number ->
                 match Int32.TryParse value with
                     | true, n -> Number n

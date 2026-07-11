@@ -152,6 +152,8 @@ type Action =
     | Number   of int          // reply to a Quantity prompt
     | Choose   of char list    // menu selections
     | Proceed                  // acknowledge a --More-- prompt
+    | Cancel                   // back out of a prompt (sends ESC): decline a
+                               // MultiChoice, abort a TextLine/Quantity/menu/Direction
 
 /// Options for starting a new game. `None` fields let the engine choose (or,
 /// eventually, prompt through the callbacks). `Seed` fixes the RNG for

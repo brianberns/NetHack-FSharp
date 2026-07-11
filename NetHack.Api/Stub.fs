@@ -111,7 +111,8 @@ module Stub =
         | MultiChoice _, Answer c when System.Char.ToLower c = 'y' ->
             state { w with Turns = w.Turns + 1L }
                   [ "The water tastes not so good." ] Command
-        | MultiChoice _, Answer _ ->
+        | MultiChoice _, Answer _
+        | MultiChoice _, Cancel ->
             state w [ "Never mind." ] Command
         // Normal commands.
         | Command, Move dir -> move w dir

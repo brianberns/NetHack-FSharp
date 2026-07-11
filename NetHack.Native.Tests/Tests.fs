@@ -59,9 +59,18 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     | other -> failwith $"expected an inventory Menu, got {other}"
     let afterInv = engine.Step inv Proceed
 
+    // Cancel backs out of a getobj prompt whose only exit is ESC (no listed
+    // quit char): 'e'at opens "What do you want to eat?", Cancel aborts it.
+    let eatPrompt = engine.Step afterInv (Key 'e')
+    match eatPrompt.Pending with
+    | MultiChoice _ -> ()
+    | other -> failwith $"expected an eat MultiChoice, got {other}"
+    let afterCancel = engine.Step eatPrompt Cancel
+    Assert.Equal(Command, afterCancel.Pending)
+
     // Wish a chest, find its inventory letter, and drop it so the hero is
     // standing on it.
-    let wished = engine.Step (engine.Step afterInv (Extended "wizwish")) (Text "chest")
+    let wished = engine.Step (engine.Step afterCancel (Extended "wizwish")) (Text "chest")
     let inv2 = engine.Step wished (Key 'i')
     let chestKey =
         match inv2.Pending with

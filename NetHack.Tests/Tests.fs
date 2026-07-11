@@ -71,6 +71,18 @@ let ``Quaffing on the fountain opens a MultiChoice prompt, answered to return to
     Assert.NotEmpty(answered.Observation.Messages)
 
 [<Fact>]
+let ``Cancel backs out of a MultiChoice prompt`` () =
+    let e, s = newGame ()
+    let asked = e.Step (walkToFountain e s) (Key 'q')
+    match asked.Pending with
+    | MultiChoice _ -> ()
+    | other -> failwith $"expected MultiChoice, got {other}"
+
+    let cancelled = e.Step asked Cancel
+    Assert.Equal(Command, cancelled.Pending)
+    Assert.Contains("Never mind.", cancelled.Observation.Messages)
+
+[<Fact>]
 let ``Step is pure: the same state can be branched two ways`` () =
     let e, s = newGame ()
     let east = e.Step s (Move East)

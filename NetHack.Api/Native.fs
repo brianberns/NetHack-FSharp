@@ -525,6 +525,7 @@ module Native =
                     let dflt = if def = '\000' then None else Some def
                     match this.Settle(MultiChoice(query, choices, dflt)) with
                     | Answer c -> writeChar c
+                    | Cancel -> writeChar '\027'    // ESC: back out of the prompt
                     | _ -> writeChar (defaultArg dflt 'q')
             | "shim_getlin" ->
                 let buf = nativeint (argAt args 1)
@@ -583,6 +584,7 @@ module Native =
             | Key c -> int c
             | Answer c -> int c
             | Proceed -> int ' '
+            | Cancel -> int '\027'   // ESC: abort the current command/prompt
             | Number n -> int (string n).[0]
             | Extended cmd ->
                 // Enter extended-command mode with '#'; the name is resolved to
