@@ -45,7 +45,8 @@ type AgentAction =
 
         [<Description("Persistent memory that carries to the next \
             turn. Use this to keep track of what you've learned \
-            and what you're planning.")>]
+            and what you're planning. Be thorough, detailed, and \
+            consistent.")>]
         Note : string
     }
 
