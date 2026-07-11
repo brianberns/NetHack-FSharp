@@ -51,15 +51,24 @@ module Program =
 
     /// Provides guidance for responding to a prompt.
     let getGuidance = function
-        | Direction _           -> "Specify a direction via Kind=Move."
-        | MultiChoice(_, choices, _)  -> $"Reply Kind=Answer, Value one character from \"{choices}\"."
-        | Quantity _            -> "Specify a quantity via Kind=Number."
-        | TextLine _            -> "Reply Kind=Text."
-        | Menu(_, PickNone, _)  -> "Reply Kind=Proceed to dismiss the menu."
-        | Menu _                -> "Reply Kind=Select with the item letters, or Kind=Proceed to cancel."
-        | More                  -> "Reply Kind=Proceed to continue."
-        | Command               -> "Reply with a command: Kind=Move, or Kind=Key for a command key."
-        | GameOver _            -> "The game is over."
+        | Direction _ ->
+            "Specify a direction via Kind=Move."
+        | MultiChoice(_, choices, _) ->
+            $"Reply Kind=Answer, Value one character from \"{choices}\"."
+        | Quantity _ ->
+            "Specify a quantity via Kind=Number."
+        | TextLine _ ->
+            "Reply Kind=Text."
+        | Menu(_, PickNone, _) ->
+            "Reply Kind=Proceed to dismiss the menu."
+        | Menu _ ->
+            "Reply Kind=Select with the item letters, or Kind=Proceed to cancel."
+        | More ->
+            "Reply Kind=Proceed to continue."
+        | Command ->
+            "Reply with a command: Kind=Move, or Kind=Key for a command key."
+        | GameOver _ ->
+            "The game is over."
 
     /// Creates a prompt for the agent based on the current state.
     let getPrompt (state : GameState) note =
