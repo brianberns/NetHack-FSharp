@@ -49,11 +49,24 @@ type AgentAction =
 
 module Program =
 
+    /// Provides guidance for responding to a prompt.
+    let getGuidance = function
+        | Direction _           -> "Specify a direction via Kind=Move."
+        | YesNo(_, choices, _)  -> $"Reply Kind=Answer, Value one character from \"{choices}\"."
+        | Quantity _            -> "Specify a quantity via Kind=Number."
+        | TextLine _            -> "Reply Kind=Text."
+        | Menu(_, PickNone, _)  -> "Reply Kind=Proceed to dismiss the menu."
+        | Menu _                -> "Reply Kind=Select with the item letters, or Kind=Proceed to cancel."
+        | More                  -> "Reply Kind=Proceed to continue."
+        | Command               -> "Reply with a command: Kind=Move, or Kind=Key for a command key."
+        | GameOver _            -> "The game is over."
+
     /// Creates a prompt for the agent based on the current state.
     let getPrompt (state : GameState) note =
         String.concat "\n" [
             $"You are an expert NetHack player controlling a character. \
             Current game state (JSON):"; Json.toJson state
+            getGuidance state.Pending
             if not (String.IsNullOrWhiteSpace(note)) then
                 $"Your note from last turn:"; note
         ]
@@ -118,20 +131,15 @@ module Program =
 
     /// Renders a view of the given state.
     let render state aa =
-
         let view = createView state aa
-
-        if not Console.IsOutputRedirected then
-            Console.Write("\x1b[3J\x1b[H\x1b[2J")   // clear console
         Console.Write(view)
 
         do
             use wtr = new StreamWriter("Agent.log", append = true)
-            fprintfn wtr "%s" view
+            fprintf wtr "%s" view
 
-        if not Console.IsOutputRedirected then
-            Console.Write("Press enter to continue")
-            Console.ReadLine() |> ignore
+        Console.WriteLine("Press enter to continue")
+        Console.ReadLine() |> ignore
 
     /// Converts the model's action into a strongly-typed NetHack.Api
     /// action.
