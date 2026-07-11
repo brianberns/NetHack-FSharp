@@ -60,7 +60,7 @@ module Program =
         | MultiChoice(_, choices, _) ->
             let options =
                 if choices = "" then "one of the characters offered in the question"
-                else $"one character from \"{choices}\""
+                else $"one character from '{choices}'"
             $"Reply Kind=Answer, Value {options}; or Kind=Cancel to back out."
         | Quantity _ ->
             "Specify a quantity via Kind=Number, or Kind=Cancel to back out."
@@ -95,7 +95,7 @@ module Program =
                 $"Your note from last turn:"; note
         ]
 
-    let model = Gemini.flash2_5
+    let model = Gemini.flash
 
     let agent =
         let config =
