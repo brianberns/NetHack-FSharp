@@ -126,6 +126,16 @@ module Program =
             AC:{status.ArmorClass} \
             T:{status.Turns}")
 
+            // what the game is waiting for
+        wtr.WriteLine()
+        match state.Pending with
+            | Menu (title, mode, items) ->
+                wtr.WriteLine($"Pending: Menu [{title}] {mode}")
+                for item in items do
+                    wtr.WriteLine($"   {item.Key} - {item.Text}")
+            | pending ->
+                wtr.WriteLine($"Pending: {pending}")
+
             // action to take in the given state
         wtr.WriteLine()
         wtr.WriteLine($"{aa.Kind} {aa.Value}")
