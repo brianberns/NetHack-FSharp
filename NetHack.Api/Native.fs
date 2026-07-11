@@ -212,10 +212,6 @@ module Native =
     /// NetHack derives its data directory from the host exe's folder, so stage
     /// the data files next to it (only when newer) and run from there.
     let private prepareEnvironment () =
-        // vi-keys movement (number_pad off); plain-ASCII symbols are forced in
-        // the DLL (windmain LIBNH_SHIM). Process-scoped env only.
-        Environment.SetEnvironmentVariable("NETHACKOPTIONS",
-            "number_pad:0,symset:plain,roguesymset:plain")
         let baseDir = AppContext.BaseDirectory
         let src0 = dataDir ()
         for f in dataFiles do
@@ -226,10 +222,16 @@ module Native =
                 || File.GetLastWriteTimeUtc src > File.GetLastWriteTimeUtc dst
             if File.Exists src && stale then
                 try File.Copy(src, dst, true) with _ -> ()
-        // the stock rc template forces the IBMGraphics_2 line-drawing symset;
-        // replace it with a clean one so the map is plain ASCII.
-        File.WriteAllText(Path.Combine(baseDir, "nethackrc.template"),
+        // Sandbox the configuration: write our own rc and point NetHack at it via
+        // NETHACKOPTIONS=@<file>. rcfile() treats a leading '@' as a config file
+        // name and reads THAT instead of the user's ~/.nethackrc, so behaviour is
+        // deterministic and never inherits personal settings (autopickup, fruit,
+        // symset, tiles, ...). vi-keys (number_pad:0) and a plain-ASCII symset are
+        // what the API's decoding assumes.
+        let rc = Path.Combine(baseDir, "sandbox.nethackrc")
+        File.WriteAllText(rc,
             "OPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n")
+        Environment.SetEnvironmentVariable("NETHACKOPTIONS", "@" + rc)
         Directory.SetCurrentDirectory(baseDir)
 
     /// Remove ONLY this player's leftover level files (e.g. "Ada.0") from the
