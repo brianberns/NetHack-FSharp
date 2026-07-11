@@ -103,6 +103,18 @@ module Program =
 
     let engine = Native.create ()
 
+    /// Expands any ASCII control characters in the given text.
+    let expandCtrl (text : string) =
+        String.concat "" [
+            for c in text do
+                let value = int c
+                if value >= 1 && value <= 26 then
+                    let letter = char (value + 96)
+                    $"[Ctrl-{letter}]"
+                else
+                    string c
+        ]
+
     /// Creates a view of the given state and the action to be
     /// taken in that state.
     let createView state aa =
@@ -149,7 +161,7 @@ module Program =
 
             // action to take in the given state
         wtr.WriteLine()
-        wtr.WriteLine($"{aa.Kind} {aa.Value}")
+        wtr.WriteLine($"{aa.Kind} {expandCtrl aa.Value}")
         wtr.WriteLine()
         wtr.WriteLine(aa.Note)
 
