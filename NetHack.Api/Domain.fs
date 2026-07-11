@@ -35,6 +35,8 @@ type Entity = {
     Kind   : GlyphKind
     Name   : string option    // decoded name when known, e.g. "jackal", "fountain"
     Color  : string           // NetHack's 16-colour name, e.g. "red", "cyan"
+    Pile   : bool             // Object only: this square holds more than one item
+                              // (the top one is named; the rest stay hidden until visited)
 }
 
 /// Hunger state, mirroring NetHack's hunger levels.

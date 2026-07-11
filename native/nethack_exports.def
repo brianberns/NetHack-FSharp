@@ -4,6 +4,7 @@ EXPORTS
     shim_graphics_set_callback
     nhglue_set_handler
     nhglue_describe_at
+    nhglue_is_pile_at
     nhglue_floor_object_at
     nhglue_feature_at
     nhglue_hero_ident

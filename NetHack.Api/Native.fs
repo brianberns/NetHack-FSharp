@@ -51,6 +51,10 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_floor_object_at(int x, int y, int index, System.Text.StringBuilder buf, int buflen)
 
+    // 1 when the displayed glyph at a cell marks a pile (>1 object stack), else 0.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern int private nhglue_is_pile_at(int x, int y)
+
     // Report the hero's role / race / gender into three buffers.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern void private nhglue_hero_ident(
@@ -234,12 +238,21 @@ module Native =
         // symset, tiles, ...). vi-keys (number_pad:0) and a plain-ASCII symset are
         // what the API's decoding assumes.
         // 'time' puts the turn counter on the status line; without it Status.Turns
-        // is never reported (defaults off). vi-keys + plain symset match the
+        // is never reported (defaults off). 'hilite_pile' marks squares holding
+        // more than one object (a pile) — NetHack always tracks this internally
+        // but only surfaces it to a player with this opt-in option; enabling it
+        // makes reporting a pile flag fair. vi-keys + plain symset match the
         // API's decoding.
-        let rc = Path.Combine(baseDir, "sandbox.nethackrc")
-        File.WriteAllText(rc,
-            "OPTIONS=time\nOPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n")
-        Environment.SetEnvironmentVariable("NETHACKOPTIONS", "@" + rc)
+        let baseOpts =
+            "OPTIONS=time,hilite_pile\nOPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n"
+        File.WriteAllText(Path.Combine(baseDir, "sandbox.nethackrc"), baseOpts)
+        // Wizard games (integration tests) additionally start with no pet, so
+        // scripted scenarios are deterministic — a pet follows the hero and swaps
+        // onto the very tiles under test. Normal play keeps its pet.
+        File.WriteAllText(Path.Combine(baseDir, "sandbox-wizard.nethackrc"),
+            baseOpts + "OPTIONS=pettype:none\n")
+        Environment.SetEnvironmentVariable(
+            "NETHACKOPTIONS", "@" + Path.Combine(baseDir, "sandbox.nethackrc"))
         Directory.SetCurrentDirectory(baseDir)
 
     /// Remove ONLY this player's leftover level files (e.g. "Ada.0") from the
@@ -370,7 +383,7 @@ module Native =
             let hero = { X = heroX; Y = heroY }
             let entities = ResizeArray<Entity>()
             entities.Add { Pos = hero; Symbol = '@'; Kind = HeroSelf
-                           Name = Some "you"; Color = "white" }
+                           Name = Some "you"; Color = "white"; Pile = false }
             // Decode monsters / objects / traps at each drawn cell into named
             // entities (features/terrain stay in the ASCII map).
             let sb = System.Text.StringBuilder(96)
@@ -388,7 +401,8 @@ module Native =
                             entities.Add
                                 { Pos = { X = x; Y = y }; Symbol = glyphs[y, x]
                                   Kind = kind; Name = Some(sb.ToString())
-                                  Color = cellColor[y, x] }
+                                  Color = cellColor[y, x]
+                                  Pile = (nhglue_is_pile_at(x, y) <> 0) }
             // Objects on the hero's own tile are hidden by the '@' glyph (and skipped
             // above), so read them from the object chain and report them explicitly —
             // otherwise a caller can't tell it is standing on, e.g., a chest.
@@ -401,7 +415,7 @@ module Native =
                 | ch ->
                     entities.Add
                         { Pos = hero; Symbol = char ch; Kind = GlyphKind.Object
-                          Name = Some(sb.ToString()); Color = "gray" }
+                          Name = Some(sb.ToString()); Color = "gray"; Pile = false }
                     oi <- oi + 1
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
               Legend = this.BuildLegend()
@@ -617,6 +631,11 @@ module Native =
             Environment.SetEnvironmentVariable(
                 "NETHACK_SEED",
                 match opts.Seed with Some s -> string s | None -> null)
+            // Wizard games use the pet-free rc for deterministic scenarios.
+            if opts.Wizard then
+                Environment.SetEnvironmentVariable(
+                    "NETHACKOPTIONS",
+                    "@" + Path.Combine(AppContext.BaseDirectory, "sandbox-wizard.nethackrc"))
             // "-D" requests debug (wizard) mode, which windmain's
             // authorize_wizard_mode grants only to the player named "wizard".
             let args =
@@ -625,6 +644,8 @@ module Native =
                    "-u"; name
                    null |]
             let argc = args.Length - 1   // argv is null-terminated
+            // First P/Invoke: loads the DLL now that the environment is final.
+            nhglue_set_handler this.Handler
             let run () =
                 let ending = try nhmain(argc, args) |> ignore; Ended with ex -> Faulted ex
                 over <- true
@@ -665,7 +686,9 @@ module Native =
                     let fmt = Marshal.PtrToStringAnsi fmtPtr
                     session.Dispatch(name, fmt, retPtr, args)
                 with ex -> session.Fault ex)
-        nhglue_set_handler session.Handler
+        // NB: nhglue_set_handler (the first P/Invoke, which loads the DLL) is
+        // deferred to Start, so the DLL's CRT snapshots NETHACKOPTIONS/rc *after*
+        // Start applies any per-game overrides (getenv reads the load-time copy).
         { new IEngine with
             member _.Start opts = session.Start opts
             member _.Step s a = session.Step a }

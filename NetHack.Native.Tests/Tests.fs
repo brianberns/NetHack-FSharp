@@ -84,3 +84,27 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
         onHero |> List.exists (fun e ->
             e.Kind = GlyphKind.Object && (defaultArg e.Name "").Contains "chest"),
         "a chest under the hero should be reported in Entities")
+
+    // Pile flag: wish a second item and drop it, so the hero's tile now holds
+    // two stacks; then step off and confirm the vacated square is reported as a
+    // pile (top item named, Pile = true, rest hidden — fog-of-war-safe).
+    let wished2 = engine.Step (engine.Step dropped (Extended "wizwish")) (Text "ring of protection")
+    let inv3 = engine.Step wished2 (Key 'i')
+    let ringKey =
+        match inv3.Pending with
+        | Menu (_, _, its) ->
+            its |> List.tryPick (fun it -> if it.Text.Contains "ring" then Some it.Key else None)
+        | _ -> None
+    Assert.True(ringKey.IsSome, "wished ring should be in inventory")
+    let twoStacks =
+        let afterInv3 = engine.Step inv3 Proceed
+        engine.Step (engine.Step afterInv3 (Key 'd')) (Answer ringKey.Value)
+    let pileCell = twoStacks.Observation.Hero
+    let mutable stepped = twoStacks
+    for dir in [ Move East; Move West; Move South; Move North ] do
+        if stepped.Observation.Hero = pileCell then stepped <- engine.Step stepped dir
+    Assert.NotEqual(pileCell, stepped.Observation.Hero)   // actually stepped off
+    Assert.True(
+        stepped.Observation.Entities
+        |> List.exists (fun e -> e.Pos = pileCell && e.Kind = GlyphKind.Object && e.Pile),
+        "the vacated two-item square should be reported as a pile (Pile = true)")

@@ -105,6 +105,29 @@ nhglue_input_state(void)
 }
 
 /*
+ * Does the *displayed* glyph at (x,y) mark a pile — more than one object stack?
+ * Uses glyph_at (what the player sees/remembers), so it respects sight and the
+ * hilite_pile option, and never leaks the contents of a pile. 1 if a pile, else 0.
+ */
+int nhglue_is_pile_at(int x, int y);
+
+int
+nhglue_is_pile_at(int x, int y)
+{
+    int g;
+
+    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO)
+        return 0;
+    /* the combined glyph_is_piletop() macro is #if 0'd in this build, so test
+       the individual pile-top predicates that cover objects, corpses, statues */
+    g = glyph_at(x, y);
+    return (glyph_is_normal_piletop_obj(g) || glyph_is_piletop_generic_obj(g)
+            || glyph_is_body_piletop(g) || glyph_is_fem_statue_piletop(g)
+            || glyph_is_male_statue_piletop(g))
+               ? 1 : 0;
+}
+
+/*
  * Report the index-th object lying on the floor at (x,y), read from the object
  * chain rather than the displayed glyph, so objects hidden under the hero (or a
  * monster) are still described. Fills buf via doname() and returns the object's

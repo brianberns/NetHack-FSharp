@@ -53,13 +53,13 @@ module Stub =
 
     let private entities (w: World) : Entity list =
         [ { Pos = w.Hero; Symbol = '@'; Kind = HeroSelf
-            Name = Some "you"; Color = "white" }
+            Name = Some "you"; Color = "white"; Pile = false }
           { Pos = w.Fountain; Symbol = '{'; Kind = Feature
-            Name = Some "fountain"; Color = "blue" }
+            Name = Some "fountain"; Color = "blue"; Pile = false }
           match w.Jackal with
           | Some p ->
               { Pos = p; Symbol = 'd'; Kind = Monster
-                Name = Some "jackal"; Color = "yellow" }
+                Name = Some "jackal"; Color = "yellow"; Pile = false }
           | None -> () ]
 
     let private status (w: World) : Status =
