@@ -46,6 +46,11 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_feature_at(int x, int y, System.Text.StringBuilder buf, int buflen)
 
+    // Name + drawn char of the index-th floor object at a cell (0 when none),
+    // read from the object chain so objects hidden under the hero are reported.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
+    extern int private nhglue_floor_object_at(int x, int y, int index, System.Text.StringBuilder buf, int buflen)
+
     // Report the hero's role / race / gender into three buffers.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern void private nhglue_hero_ident(
@@ -384,6 +389,20 @@ module Native =
                                 { Pos = { X = x; Y = y }; Symbol = glyphs[y, x]
                                   Kind = kind; Name = Some(sb.ToString())
                                   Color = cellColor[y, x] }
+            // Objects on the hero's own tile are hidden by the '@' glyph (and skipped
+            // above), so read them from the object chain and report them explicitly —
+            // otherwise a caller can't tell it is standing on, e.g., a chest.
+            let mutable oi = 0
+            let mutable more = true
+            while more do
+                sb.Clear() |> ignore
+                match nhglue_floor_object_at(heroX, heroY, oi, sb, sb.Capacity) with
+                | 0 -> more <- false
+                | ch ->
+                    entities.Add
+                        { Pos = hero; Symbol = char ch; Kind = GlyphKind.Object
+                          Name = Some(sb.ToString()); Color = "gray" }
+                    oi <- oi + 1
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
               Legend = this.BuildLegend()
               Character = this.BuildCharacter()

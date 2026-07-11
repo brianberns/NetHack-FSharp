@@ -105,6 +105,34 @@ nhglue_input_state(void)
 }
 
 /*
+ * Report the index-th object lying on the floor at (x,y), read from the object
+ * chain rather than the displayed glyph, so objects hidden under the hero (or a
+ * monster) are still described. Fills buf via doname() and returns the object's
+ * class symbol as its notional drawn char (>0); returns 0 when there is no such
+ * object. Callers iterate index 0,1,... until it returns 0.
+ */
+int nhglue_floor_object_at(int x, int y, int index, char *buf, int buflen);
+
+int
+nhglue_floor_object_at(int x, int y, int index, char *buf, int buflen)
+{
+    struct obj *otmp;
+    int i = 0;
+
+    if (buf && buflen > 0)
+        buf[0] = '\0';
+    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO)
+        return 0;
+    for (otmp = svl.level.objects[x][y]; otmp; otmp = otmp->nexthere) {
+        if (i++ == index) {
+            copy_name(buf, buflen, doname(otmp));
+            return (int) def_oc_syms[otmp->oclass].sym;
+        }
+    }
+    return 0;
+}
+
+/*
  * Concise terrain/feature name for the *displayed* glyph at map cell (x,y) —
  * e.g. "corridor", "wall", "staircase up", "fountain", "stone". Uses only what
  * the UI shows (glyph_at), so it reports only terrain the hero actually knows.
