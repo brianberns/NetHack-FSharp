@@ -26,9 +26,6 @@ type ActionKind =
 /// Action DTO the model returns each turn.
 type AgentAction =
     {
-        [<Description("One short sentence explaining this action.")>]
-        Reasoning : string
-
         [<Description("The kind of action to take.")>]
         Kind : ActionKind
 
@@ -68,8 +65,8 @@ module Program =
         | More ->
             "Reply Kind=Proceed to continue."
         | Command ->
-            "Reply with a command: Kind=Move, Kind=Key for a command key, or \
-             Kind=Extended for a named command like loot/pray/force (do NOT use Key '#')."
+            "Reply with a command: Kind=Move, Kind=Key for a command key, \
+            or Kind=Extended."
         | GameOver _ ->
             "The game is over."
 
@@ -130,8 +127,6 @@ module Program =
             // action to take in the given state
         wtr.WriteLine()
         wtr.WriteLine($"{aa.Kind} {aa.Value}")
-        wtr.WriteLine()
-        wtr.WriteLine(aa.Reasoning)
         wtr.WriteLine()
         wtr.WriteLine(aa.Note)
 
