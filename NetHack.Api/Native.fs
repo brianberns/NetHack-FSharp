@@ -53,6 +53,10 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_input_state()
 
+    // Index of an extended command (e.g. "loot") in extcmdlist, or -1.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
+    extern int private nhglue_ext_cmd_index(string name)
+
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_anything_size()
 
@@ -280,6 +284,8 @@ module Native =
         // during startup we auto-answer pre-game prompts until the first command
         let mutable initializing = true
         let mutable over = false
+        // set by KeyFor(Extended cmd); consumed by the next get_ext_cmd callback
+        let mutable pendingExtCmd : string option = None
         // last published screen, so an Ended/Faulted state still carries a map
         let mutable lastObs = emptyObservation
 
@@ -487,7 +493,12 @@ module Native =
                             if outp <> IntPtr.Zero then Marshal.WriteIntPtr(outp, arr)
                             writeInt picks.Length
                     | _ -> cancel (if how = 0 then 0 else -1)
-            | "shim_get_ext_cmd" -> writeInt -1
+            | "shim_get_ext_cmd" ->
+                // Answer a pending Extended command by index; a bare '#' with
+                // nothing queued cancels (returns -1), as before.
+                match pendingExtCmd with
+                | Some name -> pendingExtCmd <- None; writeInt (nhglue_ext_cmd_index name)
+                | None -> writeInt -1
             | "shim_message_menu" -> writeChar '\033'
             | _ -> ()   // notifications with nothing to return
 
@@ -503,6 +514,11 @@ module Native =
             | Answer c -> int c
             | Proceed -> int ' '
             | Number n -> int (string n).[0]
+            | Extended cmd ->
+                // Enter extended-command mode with '#'; the name is resolved to
+                // an index when the get_ext_cmd callback fires next.
+                pendingExtCmd <- Some(cmd.TrimStart('#'))
+                int '#'
             | _ -> int ' '
 
         /// Record a fault raised inside a callback so a waiting API thread wakes

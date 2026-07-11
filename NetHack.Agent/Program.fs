@@ -21,6 +21,7 @@ type ActionKind =
     | Number = 4
     | Select = 5
     | Proceed = 6
+    | Extended = 7
 
 /// Action DTO the model returns each turn.
 type AgentAction =
@@ -37,6 +38,7 @@ type AgentAction =
             Text: the line to type. \
             Number: an integer. \
             Select: the menu letters (e.g. 'a' or 'ac'). \
+            Extended: an extended command name, e.g. loot, pray, force, kick. \
             Proceed: ignored.")>]
         Value : string
 
@@ -66,7 +68,8 @@ module Program =
         | More ->
             "Reply Kind=Proceed to continue."
         | Command ->
-            "Reply with a command: Kind=Move, or Kind=Key for a command key."
+            "Reply with a command: Kind=Move, Kind=Key for a command key, or \
+             Kind=Extended for a named command like loot/pray/force (do NOT use Key '#')."
         | GameOver _ ->
             "The game is over."
 
@@ -175,6 +178,8 @@ module Program =
                 Answer (if value.Length > 0 then value[0] else 'y')
             | ActionKind.Text ->
                 Text value
+            | ActionKind.Extended ->
+                Extended value
             | ActionKind.Number ->
                 match Int32.TryParse value with
                     | true, n -> Number n

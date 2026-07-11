@@ -105,7 +105,9 @@ let private nativeDemo () =
             show (sprintf "menu-> %A" a) s
     // 'o' (open) calls getdir() unconditionally; it should surface as
     // Pending = Direction, and the following Move answers it.
-    for a in [ Move South; Key 'D'; Move East; Key 'i'; Key 'o'; Move North ] do
+    // Extended "pray" should reach dopray and surface its confirm prompt,
+    // proving the extended-command path (was previously stubbed to cancel).
+    for a in [ Move South; Key 'D'; Move East; Key 'i'; Key 'o'; Move North; Extended "pray" ] do
         resolveMenus ()
         s <- engine.Step s a
         show (sprintf "%A" a) s

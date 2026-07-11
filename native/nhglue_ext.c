@@ -9,6 +9,7 @@
  */
 
 #include "hack.h"
+#include "func_tab.h"   /* extcmdlist[] */
 #include <string.h>
 
 static void
@@ -101,6 +102,26 @@ int
 nhglue_input_state(void)
 {
     return program_state.input_state;
+}
+
+/*
+ * Index of the extended command named `name` (e.g. "loot", "pray") in
+ * extcmdlist[], or -1 if there is no such command. get_ext_cmd() returns such
+ * an index, so this lets the F# side answer an Action.Extended by name. Case
+ * insensitive; a leading '#' should already be stripped by the caller.
+ */
+int nhglue_ext_cmd_index(const char *name);
+
+int
+nhglue_ext_cmd_index(const char *name)
+{
+    int i;
+
+    if (name)
+        for (i = 0; extcmdlist[i].ef_txt; i++)
+            if (!strcmpi(extcmdlist[i].ef_txt, name))
+                return i;
+    return -1;
 }
 
 /* Size of the `anything` identifier union, so the F# side can pack a copy. */
