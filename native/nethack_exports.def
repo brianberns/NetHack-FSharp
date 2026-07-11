@@ -5,5 +5,6 @@ EXPORTS
     nhglue_set_handler
     nhglue_describe_at
     nhglue_hero_ident
+    nhglue_input_state
     nhglue_anything_size
     nhglue_build_menu

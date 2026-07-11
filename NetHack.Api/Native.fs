@@ -49,6 +49,10 @@ module Native =
         System.Text.StringBuilder race, int racelen,
         System.Text.StringBuilder gender, int genderlen)
 
+    // program_state.input_state at the moment of the call (getdirInp == 3, etc.).
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern int private nhglue_input_state()
+
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_anything_size()
 
@@ -112,6 +116,11 @@ module Native =
     let private BL_HP = 18
     let private BL_HHUNGER = 17
     let private BL_CONDITION = 22
+
+    // program_state.input_state value while getdir() is reading a direction
+    // (hack.h: getdirInp). yn_function is overloaded — this distinguishes the
+    // "In what direction?" prompt from a genuine yes/no.
+    let private GetDirInp = 3
 
     let private COLNO = 80
     let private ROWNO = 21
@@ -426,6 +435,16 @@ module Native =
                 if initializing then
                     // auto-accept pre-game prompts (e.g. "pick a character?")
                     writeChar (if def <> '\000' then def else 'y')
+                elif nhglue_input_state () = GetDirInp then
+                    // getdir() reads its direction through yn_function; surface it
+                    // as a Direction prompt, not a bogus yes/no. A Move is the
+                    // canonical reply (translated to its movement key); a raw Key
+                    // or Answer char is honoured too; anything else cancels (ESC).
+                    match this.Settle(Direction query) with
+                    | Move _ as m -> writeChar (char (this.KeyFor m))
+                    | Key c -> writeChar c
+                    | Answer c -> writeChar c
+                    | _ -> writeChar '\027'
                 else
                     let dflt = if def = '\000' then None else Some def
                     match this.Settle(YesNo(query, choices, dflt)) with

@@ -103,7 +103,9 @@ let private nativeDemo () =
                 | _ -> Proceed
             s <- engine.Step s a
             show (sprintf "menu-> %A" a) s
-    for a in [ Move South; Key 'D'; Move East; Key 'i' ] do
+    // 'o' (open) calls getdir() unconditionally; it should surface as
+    // Pending = Direction, and the following Move answers it.
+    for a in [ Move South; Key 'D'; Move East; Key 'i'; Key 'o'; Move North ] do
         resolveMenus ()
         s <- engine.Step s a
         show (sprintf "%A" a) s

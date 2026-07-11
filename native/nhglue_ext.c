@@ -89,6 +89,20 @@ nhglue_hero_ident(char *role, int rolelen, char *race, int racelen,
     copy_name(gender, genderlen, genders[g].adj);
 }
 
+/*
+ * The core's current input_state (see the getposInp/getdirInp enum in hack.h).
+ * yn_function is overloaded, so the F# side reads this to tell a genuine yes/no
+ * prompt (any other state) apart from getdir()'s "In what direction?"
+ * (getdirInp), which the core also drives through yn_function.
+ */
+int nhglue_input_state(void);
+
+int
+nhglue_input_state(void)
+{
+    return program_state.input_state;
+}
+
 /* Size of the `anything` identifier union, so the F# side can pack a copy. */
 int nhglue_anything_size(void);
 
