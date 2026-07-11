@@ -593,8 +593,8 @@ module Native =
             Environment.SetEnvironmentVariable(
                 "NETHACK_SEED",
                 match opts.Seed with Some s -> string s | None -> null)
-            // "-D" requests debug (wizard) mode; libnh's authorize_wizard_mode
-            // allows it when no sysconf restricts WIZARDS. The name becomes "wizard".
+            // "-D" requests debug (wizard) mode, which windmain's
+            // authorize_wizard_mode grants only to the player named "wizard".
             let args =
                 [| "nethack"
                    if opts.Wizard then "-D"
