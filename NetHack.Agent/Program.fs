@@ -35,14 +35,17 @@ type AgentAction =
             Text: the line to type. \
             Number: an integer. \
             Select: the menu letters (e.g. 'a' or 'ac'). \
-            Extended: an extended command name, e.g. loot, pray, force, kick. \
+            Extended: an extended command name (e.g. loot, pray, etc.). \
             Proceed: ignored.")>]
         Value : string
 
+        [<Description("A sentence quantifying the expected result of \
+            this action, such as the hero's expected new location.")>]
+        Prediction : string
+
         [<Description("Persistent memory that carries to the next \
-            turn. This is your only way of planning ahead, so you \
-            should delete information only when it becomes obsolete \
-            or irrelevant.")>]
+            turn. Use this to keep track of what you've learned \
+            and what you're planning.")>]
         Note : string
     }
 
@@ -71,11 +74,18 @@ module Program =
             "The game is over."
 
     /// Creates a prompt for the agent based on the current state.
-    let getPrompt (state : GameState) note =
+    let getPrompt (state : GameState) prediction note =
         String.concat "\n" [
-            $"You are an expert NetHack player controlling a character. \
-            Current game state (JSON):"; Json.toJson state
+            "You are an expert NetHack player controlling a character."
+            "The current game state (JSON):"
+            Json.toJson state
             getGuidance state.Pending
+            if not (String.IsNullOrWhiteSpace(prediction)) then
+                "Your prediction from last turn of what the current game \
+                state should be:"
+                prediction
+                "Compare this prediction against reality to determine \
+                if your current plan is working."
             if not (String.IsNullOrWhiteSpace(note)) then
                 $"Your note from last turn:"; note
         ]
@@ -99,10 +109,12 @@ module Program =
         use wtr = new StringWriter()
 
             // messages that led to current state
+        wtr.WriteLine()
         for msg in state.Observation.Messages do
             wtr.WriteLine($"{msg}")
 
             // dungeon map
+        wtr.WriteLine()
         for row in state.Observation.Rows do
             wtr.WriteLine($"{row}")
 
@@ -139,6 +151,10 @@ module Program =
         wtr.WriteLine($"{aa.Kind} {aa.Value}")
         wtr.WriteLine()
         wtr.WriteLine(aa.Note)
+
+            // expected result of action
+        wtr.WriteLine()
+        wtr.WriteLine(aa.Prediction)
 
             // divider
         wtr.WriteLine()
@@ -198,13 +214,13 @@ module Program =
                 Proceed
 
     /// Runs the game from the given state.
-    let rec run state note =
+    let rec run state prediction note =
 
         async {
             try
                     // get agent's action
                 let! aa =
-                    let prompt = getPrompt state note
+                    let prompt = getPrompt state prediction note
                     Agent.getResultAsync<AgentAction> prompt agent
 
                     // display the state prior to applying the action
@@ -215,14 +231,14 @@ module Program =
 
                     // play another turn?
                 if state.Over then return ()
-                else return! run state aa.Note
+                else return! run state aa.Prediction aa.Note
 
             with exn ->
                 match model.TryParseWaitTime exn with
                     | Some duration ->
                         printfn $"Waiting {duration}"
                         do! Async.Sleep(duration)
-                        return! run state note
+                        return! run state prediction note
                     | None ->
                         printfn $"{exn.Message}"
         }
@@ -234,5 +250,5 @@ module Program =
             |> engine.Start
 
         // run the game and wait for it to finish
-    run state ""
+    run state "" ""
         |> Async.RunSynchronously
