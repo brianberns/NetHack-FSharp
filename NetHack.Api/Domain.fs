@@ -35,7 +35,6 @@ type Entity = {
     Kind   : GlyphKind
     Name   : string option    // decoded name when known, e.g. "jackal", "fountain"
     Color  : string           // NetHack's 16-colour name, e.g. "red", "cyan"
-    Glyph  : int              // raw NetHack glyph id (fidelity / debugging)
 }
 
 /// Hunger state, mirroring NetHack's hunger levels.

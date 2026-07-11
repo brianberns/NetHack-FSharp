@@ -360,7 +360,7 @@ module Native =
             let hero = { X = heroX; Y = heroY }
             let entities = ResizeArray<Entity>()
             entities.Add { Pos = hero; Symbol = '@'; Kind = HeroSelf
-                           Name = Some "you"; Color = "white"; Glyph = 0 }
+                           Name = Some "you"; Color = "white" }
             // Decode monsters / objects / traps at each drawn cell into named
             // entities (features/terrain stay in the ASCII map).
             let sb = System.Text.StringBuilder(96)
@@ -378,7 +378,7 @@ module Native =
                             entities.Add
                                 { Pos = { X = x; Y = y }; Symbol = glyphs[y, x]
                                   Kind = kind; Name = Some(sb.ToString())
-                                  Color = cellColor[y, x]; Glyph = 0 }
+                                  Color = cellColor[y, x] }
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
               Legend = this.BuildLegend()
               Character = this.BuildCharacter()
