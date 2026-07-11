@@ -53,18 +53,18 @@ let ``Quaffing while not on the fountain gives a message and stays in Command`` 
     Assert.Contains("anything to drink", List.head s'.Observation.Messages)
 
 [<Fact>]
-let ``Quaffing on the fountain opens a YesNo prompt, answered to return to Command`` () =
+let ``Quaffing on the fountain opens a MultiChoice prompt, answered to return to Command`` () =
     let e, s = newGame ()
     let onFountain = walkToFountain e s
     Assert.Equal({ X = 40; Y = 10 }, onFountain.Observation.Hero)
 
     let asked = e.Step onFountain (Key 'q')
     match asked.Pending with
-    | YesNo(q, choices, dflt) ->
+    | MultiChoice(q, choices, dflt) ->
         Assert.Contains("fountain", q)
         Assert.Equal("yn", choices)
         Assert.Equal(Some 'n', dflt)
-    | other -> failwith $"expected YesNo, got {other}"
+    | other -> failwith $"expected MultiChoice, got {other}"
 
     let answered = e.Step asked (Answer 'y')
     Assert.Equal(Command, answered.Pending)
@@ -87,8 +87,8 @@ let ``Fieldless union cases serialize to a bare string`` () =
 
 [<Fact>]
 let ``Tagged union cases carry a type discriminator and named fields`` () =
-    let json = Json.toJson (YesNo("Drink from the fountain?", "yn", Some 'n'))
-    Assert.Contains("\"type\": \"YesNo\"", json)
+    let json = Json.toJson (MultiChoice("Drink from the fountain?", "yn", Some 'n'))
+    Assert.Contains("\"type\": \"MultiChoice\"", json)
     Assert.Contains("\"question\": \"Drink from the fountain?\"", json)
     Assert.Contains("\"choices\": \"yn\"", json)
 

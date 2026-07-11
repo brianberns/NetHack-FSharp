@@ -26,7 +26,7 @@ let private draw (s: GameState) =
 /// Map a keystroke to an Action, given what the game is currently asking for.
 let private toAction (pending: Prompt) (key: ConsoleKeyInfo) : Action option =
     match pending with
-    | YesNo _ -> Some(Answer key.KeyChar)
+    | MultiChoice _ -> Some(Answer key.KeyChar)
     | More -> Some Proceed
     | Menu _ -> Some(Choose [])
     | _ ->
@@ -43,7 +43,7 @@ let private toAction (pending: Prompt) (key: ConsoleKeyInfo) : Action option =
 let private promptLine (pending: Prompt) =
     match pending with
     | Command -> "[hjklyubn move | q quaff | s search | i inv | J dump JSON | Q quit]"
-    | YesNo(q, choices, _) -> $"{q} [{choices}]"
+    | MultiChoice(q, choices, _) -> $"{q} [{choices}]"
     | More -> "--More--  (press a key)"
     | Menu(title, _, _) -> $"{title}  (press a key to dismiss)"
     | Direction q -> $"{q}  (direction)"

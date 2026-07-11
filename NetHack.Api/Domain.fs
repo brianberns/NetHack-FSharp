@@ -108,7 +108,7 @@ type MenuMode = PickNone | PickOne | PickAny
 type Prompt =
     | Command                                                  // win_nhgetch: free to issue any command
     | Direction    of question: string                        // getdir: pick a direction
-    | YesNo        of question: string * choices: string * defaultChoice: char option  // win_yn_function
+    | MultiChoice  of question: string * choices: string * defaultChoice: char option  // win_yn_function: reply one char from choices (e.g. "yn","ynq"); '#' count entry unsupported
     | Quantity     of question: string                        // "How many?" numeric reply
     | TextLine     of prompt: string                          // win_getlin
     | Menu         of title: string * mode: MenuMode * items: MenuItem list  // win_select_menu
@@ -145,7 +145,7 @@ type Action =
     | Move     of Direction    // when Pending = Command or Direction
     | Key      of char         // a raw command key, e.g. 's' search, 'i' inventory
     | Extended of string       // an extended command, e.g. "#pray"
-    | Answer   of char         // reply to a YesNo prompt
+    | Answer   of char         // reply to a MultiChoice prompt
     | Text     of string       // reply to a TextLine prompt
     | Number   of int          // reply to a Quantity prompt
     | Choose   of char list    // menu selections

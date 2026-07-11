@@ -52,7 +52,7 @@ module Program =
     /// Provides guidance for responding to a prompt.
     let getGuidance = function
         | Direction _           -> "Specify a direction via Kind=Move."
-        | YesNo(_, choices, _)  -> $"Reply Kind=Answer, Value one character from \"{choices}\"."
+        | MultiChoice(_, choices, _)  -> $"Reply Kind=Answer, Value one character from \"{choices}\"."
         | Quantity _            -> "Specify a quantity via Kind=Number."
         | TextLine _            -> "Reply Kind=Text."
         | Menu(_, PickNone, _)  -> "Reply Kind=Proceed to dismiss the menu."

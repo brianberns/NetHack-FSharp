@@ -14,7 +14,7 @@ module Json =
             JsonFSharpOptions.Default()
                 .WithUnionInternalTag()          // discriminator lives inside the object
                 .WithUnionNamedFields()          // fields by name, not "Item1"
-                .WithUnionTagName("type")        // { "type": "YesNo", ... }
+                .WithUnionTagName("type")        // { "type": "MultiChoice", ... }
                 .WithUnionUnwrapFieldlessTags()  // Command -> "Command", North -> "North"
                 .WithSkippableOptionFields()     // None -> field omitted
         let o = JsonSerializerOptions(JsonSerializerDefaults.Web)

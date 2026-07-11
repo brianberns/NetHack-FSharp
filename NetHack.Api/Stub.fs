@@ -104,15 +104,15 @@ module Stub =
         let w = state0.Continuation :?> World
         match state0.Pending, action with
         // Answering the "drink from the fountain?" question.
-        | YesNo _, Answer c when System.Char.ToLower c = 'y' ->
+        | MultiChoice _, Answer c when System.Char.ToLower c = 'y' ->
             state { w with Turns = w.Turns + 1L }
                   [ "The water tastes not so good." ] Command
-        | YesNo _, Answer _ ->
+        | MultiChoice _, Answer _ ->
             state w [ "Never mind." ] Command
         // Normal commands.
         | Command, Move dir -> move w dir
         | Command, Key 'q' when w.Hero = w.Fountain ->
-            state w [] (YesNo("Drink from the fountain?", "yn", Some 'n'))
+            state w [] (MultiChoice("Drink from the fountain?", "yn", Some 'n'))
         | Command, Key 'q' ->
             state w [ "You don't have anything to drink." ] Command
         | Command, Key 's' ->

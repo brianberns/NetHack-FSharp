@@ -447,7 +447,7 @@ module Native =
                     | _ -> writeChar '\027'
                 else
                     let dflt = if def = '\000' then None else Some def
-                    match this.Settle(YesNo(query, choices, dflt)) with
+                    match this.Settle(MultiChoice(query, choices, dflt)) with
                     | Answer c -> writeChar c
                     | _ -> writeChar (defaultArg dflt 'q')
             | "shim_getlin" ->
