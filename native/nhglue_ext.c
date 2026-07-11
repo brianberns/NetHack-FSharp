@@ -186,6 +186,63 @@ nhglue_feature_at(int x, int y, char *buf, int buflen)
 }
 
 /*
+ * Custom disambiguating character for the *displayed* glyph, so the ASCII map
+ * can separate glyphs NetHack draws with the same char: doorway vs floor, tree
+ * vs corridor, lava vs water, a spellbook object vs a closed door, etc. Also
+ * re-draws the eleven wall/corner glyphs with Unicode box-drawing (mirroring
+ * NetHack's own DECgraphics orientation), which frees '+' to mean closed door
+ * only. Returns a Unicode code point (>0) for glyphs we re-map, or 0 to keep
+ * the engine's normal ttychar. Monsters and ordinary objects fall through to 0
+ * so they keep their usual symbols. Fog-of-war-safe: the caller passes the
+ * glyph the player actually sees (glyph_at), so this only re-renders, it never
+ * reveals anything the UI wouldn't already show.
+ */
+int nhglue_map_char(int glyph);
+
+int
+nhglue_map_char(int glyph)
+{
+    if (glyph_is_cmap(glyph)) {
+        switch (glyph_to_cmap(glyph)) {
+        /* walls & corners: box-drawing, per NetHack's own DECgraphics shapes */
+        case S_vwall:   return 0x2502; /* | -> box vertical */
+        case S_hwall:   return 0x2500; /* - -> box horizontal */
+        case S_tlcorn:  return 0x250C; /* top-left corner */
+        case S_trcorn:  return 0x2510; /* top-right corner */
+        case S_blcorn:  return 0x2514; /* bottom-left corner */
+        case S_brcorn:  return 0x2518; /* bottom-right corner */
+        case S_crwall:  return 0x253C; /* cross */
+        case S_tuwall:  return 0x2534; /* T-up */
+        case S_tdwall:  return 0x252C; /* T-down */
+        case S_tlwall:  return 0x2524; /* T-left */
+        case S_trwall:  return 0x251C; /* T-right */
+        /* doors: closed stays '+'; the two open doors and the doorless
+           doorway split off from the wall chars they otherwise share */
+        case S_hodoor:  return 0x2016; /* open door in a vertical wall */
+        case S_vodoor:  return 0x2550; /* open door in a horizontal wall */
+        case S_ndoor:   return 0x25AB; /* doorway (no door) */
+        /* terrain that otherwise hides behind corridor/fountain/water/wall */
+        case S_tree:    return 0x2663; /* tree */
+        case S_bars:    return 0x2263; /* iron bars */
+        case S_sink:    return 0x2294; /* sink (vs fountain '{') */
+        case S_lava:    return 0x224B; /* molten lava (vs water '}') */
+        case S_grave:   return 0x2020; /* grave (vs wall) */
+        default:        return 0;      /* floor, corridor, fountain, ... as-is */
+        }
+    }
+    if (glyph_is_object(glyph)) {
+        int otyp = glyph_to_obj(glyph);
+        if (otyp >= 0 && otyp < NUM_OBJECTS) {
+            if (objects[otyp].oc_class == SPBOOK_CLASS)
+                return 0x00B1; /* spellbook (vs closed door '+') */
+            if (otyp == BOULDER)
+                return 0x25CF; /* boulder (vs engraving '`') */
+        }
+    }
+    return 0; /* monsters, other objects, traps, blanks: keep normal symbol */
+}
+
+/*
  * Index of the extended command named `name` (e.g. "loot", "pray") in
  * extcmdlist[], or -1 if there is no such command. get_ext_cmd() returns such
  * an index, so this lets the F# side answer an Action.Extended by name. Case

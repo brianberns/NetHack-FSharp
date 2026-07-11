@@ -52,6 +52,20 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     Assert.NotEmpty start.Observation.Legend
     Assert.False start.Over
 
+    // Walls render as box-drawing (the glyph->char remap), so '+' is reserved
+    // for a closed door and never masquerades as a room corner. Every room has
+    // walls, so the legend maps at least one box char to "wall" and maps '+' to
+    // nothing wall-like.
+    let boxWallChars = set [ "│"; "─"; "┌"; "┐"; "└"; "┘"; "┼"; "┴"; "┬"; "┤"; "├" ]
+    Assert.True(
+        start.Observation.Legend
+        |> Map.exists (fun sym name -> boxWallChars.Contains sym && name = "wall"),
+        "walls should render as box-drawing (a box char legends as \"wall\")")
+    Assert.False(
+        start.Observation.Legend
+        |> Map.exists (fun sym name -> sym = "+" && name.Contains "wall"),
+        "'+' must never be a wall/corner (it is reserved for closed doors)")
+
     // Opening the inventory yields a menu (exercises the select-menu path).
     let inv = engine.Step start (Key 'i')
     match inv.Pending with

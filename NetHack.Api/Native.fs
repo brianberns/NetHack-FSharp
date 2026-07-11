@@ -46,6 +46,12 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_feature_at(int x, int y, System.Text.StringBuilder buf, int buflen)
 
+    // Custom disambiguating char (a Unicode code point) for a glyph that NetHack
+    // would otherwise draw ambiguously (doorway vs floor, tree vs corridor, box-
+    // drawing walls, ...), or 0 to keep the engine's normal ttychar.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern int private nhglue_map_char(int glyph)
+
     // Name + drawn char of the index-th floor object at a cell (0 when none),
     // read from the object chain so objects hidden under the hero are reported.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
@@ -235,16 +241,18 @@ module Native =
         // NETHACKOPTIONS=@<file>. rcfile() treats a leading '@' as a config file
         // name and reads THAT instead of the user's ~/.nethackrc, so behaviour is
         // deterministic and never inherits personal settings (autopickup, fruit,
-        // symset, tiles, ...). vi-keys (number_pad:0) and a plain-ASCII symset are
-        // what the API's decoding assumes.
+        // symset, tiles, ...). vi-keys (number_pad:0) are what the API assumes.
         // 'time' puts the turn counter on the status line; without it Status.Turns
         // is never reported (defaults off). 'hilite_pile' marks squares holding
         // more than one object (a pile) — NetHack always tracks this internally
         // but only surfaces it to a player with this opt-in option; enabling it
-        // makes reporting a pile flag fair. vi-keys + plain symset match the
-        // API's decoding.
+        // makes reporting a pile flag fair.
+        // No symset is set on purpose: nhglue_map_char re-renders the map from the
+        // glyph itself (box-drawing walls, disambiguated terrain), so the compiled
+        // default ASCII symset is fine — and we avoid symset:plain, whose only
+        // effect is to draw wall corners as '+', colliding with closed doors.
         let baseOpts =
-            "OPTIONS=time,hilite_pile\nOPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n"
+            "OPTIONS=time,hilite_pile\nOPTIONS=number_pad:0\n"
         File.WriteAllText(Path.Combine(baseDir, "sandbox.nethackrc"), baseOpts)
         // Wizard games (integration tests) additionally start with no pet, so
         // scripted scenarios are deterministic — a pet follows the hero and swaps
@@ -454,9 +462,13 @@ module Native =
                 if gi <> IntPtr.Zero && y >= 0 && y < ROWNO && x >= 0 && x < COLNO then
                     // glyph_info layout (wintype.h): int glyph; int ttychar;
                     // uint32 framecolor; glyph_map gm { ...; classic { color; } }
+                    let glyph = Marshal.ReadInt32(gi, 0)
                     let ttychar = Marshal.ReadInt32(gi, 4)
                     let color = Marshal.ReadInt32(gi, 16)
-                    glyphs[y, x] <- char ttychar
+                    // Prefer our disambiguating char (box-drawing walls, doorway,
+                    // tree, lava, spellbook, ...); fall back to NetHack's ttychar.
+                    let mapped = nhglue_map_char glyph
+                    glyphs[y, x] <- if mapped <> 0 then char mapped else char ttychar
                     if color >= 0 && color < colorName.Length then
                         cellColor[y, x] <- colorName[color]
             | "shim_curs" ->
