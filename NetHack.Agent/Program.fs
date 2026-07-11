@@ -40,11 +40,9 @@ type AgentAction =
         Value : string
 
         [<Description("Persistent memory that carries to the next \
-            turn. This is your only way of remembering the past or \
-            planning ahead, so keep that information here. If you \
-            start a new sub-goal in reaction to some event, keep \
-            your previous unfinished goals here, so you can resume \
-            working on them when the sub-goal is complete.")>]
+            turn. This is your only way of planning ahead, so you \
+            should delete information only when it becomes obsolete \
+            or irrelevant.")>]
         Note : string
     }
 
