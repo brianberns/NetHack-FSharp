@@ -228,9 +228,12 @@ module Native =
         // deterministic and never inherits personal settings (autopickup, fruit,
         // symset, tiles, ...). vi-keys (number_pad:0) and a plain-ASCII symset are
         // what the API's decoding assumes.
+        // 'time' puts the turn counter on the status line; without it Status.Turns
+        // is never reported (defaults off). vi-keys + plain symset match the
+        // API's decoding.
         let rc = Path.Combine(baseDir, "sandbox.nethackrc")
         File.WriteAllText(rc,
-            "OPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n")
+            "OPTIONS=time\nOPTIONS=number_pad:0\nOPTIONS=symset:plain,roguesymset:plain\n")
         Environment.SetEnvironmentVariable("NETHACKOPTIONS", "@" + rc)
         Directory.SetCurrentDirectory(baseDir)
 
