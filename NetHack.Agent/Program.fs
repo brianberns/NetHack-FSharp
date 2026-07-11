@@ -39,10 +39,10 @@ type AgentAction =
             Proceed: ignored.")>]
         Value : string
 
-        [<Description("Your running memory to carry to the next turn. \
-            Include information about what you've done in the past, \
-            what you've learned, your short-term goal, and your \
-            overall plan.")>]
+        [<Description("Persistent memory that carries to the next \
+            turn. This is your only way of planning ahead, so you \
+            should delete information only when it becomes obsolete \
+            or irrelevant.")>]
         Note : string
     }
 
