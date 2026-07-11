@@ -582,7 +582,10 @@ module Native =
                 state lastObs (GameOver $"internal error: {ex.Message}") true
 
         member this.Start(opts: NewGame) : GameState =
-            let name = defaultArg opts.Name "Player"
+            // windmain's authorize_wizard_mode only grants debug mode to the
+            // player named "wizard", so force that name when Wizard is requested.
+            let name =
+                if opts.Wizard then "wizard" else defaultArg opts.Name "Player"
             cleanPlayground name
             // Fix the RNG for reproducible runs when a seed is given; windsys.c's
             // sys_random_seed honours NETHACK_SEED. Cleared otherwise so normal
@@ -590,9 +593,16 @@ module Native =
             Environment.SetEnvironmentVariable(
                 "NETHACK_SEED",
                 match opts.Seed with Some s -> string s | None -> null)
-            let argv = [| "nethack"; "-u"; name; null |]
+            // "-D" requests debug (wizard) mode; libnh's authorize_wizard_mode
+            // allows it when no sysconf restricts WIZARDS. The name becomes "wizard".
+            let args =
+                [| "nethack"
+                   if opts.Wizard then "-D"
+                   "-u"; name
+                   null |]
+            let argc = args.Length - 1   // argv is null-terminated
             let run () =
-                let ending = try nhmain(3, argv) |> ignore; Ended with ex -> Faulted ex
+                let ending = try nhmain(argc, args) |> ignore; Ended with ex -> Faulted ex
                 over <- true
                 try outbox.Add ending with _ -> ()
             let t = Thread(ThreadStart run, 16 * 1024 * 1024)

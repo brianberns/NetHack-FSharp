@@ -159,12 +159,13 @@ type NewGame = {
     Role : string option       // "Valkyrie", "Wizard", ...
     Race : string option       // "human", "elf", ...
     Seed : int option
+    Wizard : bool              // debug (wizard) mode: enables #wiz* commands, for tests
 }
 
 module NewGame =
     /// A fully-defaulted new game request.
     let defaults =
-        { Name = None; Role = None; Race = None; Seed = None }
+        { Name = None; Role = None; Race = None; Seed = None; Wizard = false }
 
 /// The engine contract. `Start` produces the initial state; `Step` advances it.
 /// The proposed core signature `GameState -> Action -> GameState` is exactly
