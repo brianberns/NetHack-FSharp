@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Integration tests that drive the REAL NetHack engine via the native DLL.
+       Unlike NetHack.Tests (Stub-only, portable), these need NetHackNative.dll +
+       data files (Release|x64) and are skipped when it isn't built. NetHack keeps
+       one game in C globals per process, so parallelism is disabled and the suite
+       starts a single seeded game. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Tests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NetHack.Api\NetHack.Api.fsproj" />
+  </ItemGroup>
+
+</Project>

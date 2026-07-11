@@ -2,5 +2,6 @@
   <Project Path="NetHack.Agent/NetHack.Agent.fsproj" />
   <Project Path="NetHack.Api/NetHack.Api.fsproj" />
   <Project Path="NetHack.Cli/NetHack.Cli.fsproj" />
+  <Project Path="NetHack.Native.Tests/NetHack.Native.Tests.fsproj" />
   <Project Path="NetHack.Tests/NetHack.Tests.fsproj" />
 </Solution>

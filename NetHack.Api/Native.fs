@@ -584,6 +584,12 @@ module Native =
         member this.Start(opts: NewGame) : GameState =
             let name = defaultArg opts.Name "Player"
             cleanPlayground name
+            // Fix the RNG for reproducible runs when a seed is given; windsys.c's
+            // sys_random_seed honours NETHACK_SEED. Cleared otherwise so normal
+            // play stays random.
+            Environment.SetEnvironmentVariable(
+                "NETHACK_SEED",
+                match opts.Seed with Some s -> string s | None -> null)
             let argv = [| "nethack"; "-u"; name; null |]
             let run () =
                 let ending = try nhmain(3, argv) |> ignore; Ended with ex -> Faulted ex
