@@ -57,7 +57,8 @@ type AgentAction =
         NotesToAdd : string[]
 
         [<Description("IDs of notes to delete because they are now \
-        incorrect, irrelevant, or redundant.")>]
+        incorrect, irrelevant, or redundant. Use this to keep your
+        notes tidy because your memory and attention are limited.")>]
         NotesToDelete : int[]
     }
 
