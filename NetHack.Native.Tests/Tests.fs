@@ -66,11 +66,16 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
         |> Map.exists (fun sym name -> sym = "+" && name.Contains "wall"),
         "'+' must never be a wall/corner (it is reserved for closed doors)")
 
+    // GameId (NetHack's ubirthday) is set once the game is running and stays
+    // fixed for the life of the game.
+    Assert.NotEqual(0L, start.GameId)
+
     // Opening the inventory yields a menu (exercises the select-menu path).
     let inv = engine.Step start (Key 'i')
     match inv.Pending with
     | Menu (_, _, items) -> Assert.NotEmpty items
     | other -> failwith $"expected an inventory Menu, got {other}"
+    Assert.Equal(start.GameId, inv.GameId)   // stable across steps
     let afterInv = engine.Step inv Proceed
 
     // Cancel backs out of a getobj prompt whose only exit is ESC (no listed

@@ -91,6 +91,20 @@ nhglue_hero_ident(char *role, int rolelen, char *race, int racelen,
 }
 
 /*
+ * NetHack's global `ubirthday`: the time_t at which the current game was
+ * created. It is fixed for the life of a game and is what the score/xlog
+ * records use to identify one, so the host can treat it as a per-game id.
+ * Returned as a 64-bit value (time_t is 64-bit on the target).
+ */
+long long nhglue_game_id(void);
+
+long long
+nhglue_game_id(void)
+{
+    return (long long) ubirthday;
+}
+
+/*
  * The core's current input_state (see the getposInp/getdirInp enum in hack.h).
  * yn_function is overloaded, so the F# side reads this to tell a genuine yes/no
  * prompt (any other state) apart from getdir()'s "In what direction?"

@@ -9,6 +9,7 @@ EXPORTS
     nhglue_feature_at
     nhglue_map_char
     nhglue_hero_ident
+    nhglue_game_id
     nhglue_input_state
     nhglue_ext_cmd_index
     nhglue_anything_size

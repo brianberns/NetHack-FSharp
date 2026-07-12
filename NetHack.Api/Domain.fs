@@ -135,6 +135,10 @@ type Observation = {
 /// `Observation` and `Pending`.
 type GameState = {
     [<JsonIgnore>] Continuation : obj  // opaque, engine-private; excluded from the wire
+    // NetHack's `ubirthday` (the game's creation time); fixed for the life of a
+    // game, so the host can use it as a per-game id. Host-only, not sent to the
+    // agent.
+    [<JsonIgnore>] GameId : int64
     Observation : Observation
     Pending     : Prompt
     Over        : bool

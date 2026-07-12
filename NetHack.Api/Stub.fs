@@ -21,7 +21,8 @@ module Stub =
           Jackal   : Pos option
           Turns    : int64
           Hp       : int
-          HpMax    : int }
+          HpMax    : int
+          GameId   : int64 }
 
     let private isWall p =
         p.Y = roomT || p.Y = roomB || p.X = roomL || p.X = roomR
@@ -86,6 +87,7 @@ module Stub =
 
     let private state (w: World) (messages: string list) (pending: Prompt) : GameState =
         { Continuation = box w
+          GameId = w.GameId
           Observation = observe w messages
           Pending = pending
           Over = (match pending with GameOver _ -> true | _ -> false) }
@@ -137,7 +139,9 @@ module Stub =
             { Hero = { X = 35; Y = 8 }
               Fountain = { X = 40; Y = 10 }
               Jackal = Some { X = 45; Y = 12 }
-              Turns = 0L; Hp = 12; HpMax = 12 }
+              Turns = 0L; Hp = 12; HpMax = 12
+              // Mimic ubirthday's semantics: a per-game creation timestamp.
+              GameId = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds() }
         let who = defaultArg opts.Name "Newt"
         state w [ $"Hello {who}, welcome to NetHack!" ] Command
 

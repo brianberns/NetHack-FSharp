@@ -72,6 +72,11 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_input_state()
 
+    // NetHack's `ubirthday` (game creation time): a per-game id, fixed for the
+    // life of a game.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern int64 private nhglue_game_id()
+
     // Index of an extended command (e.g. "loot") in extcmdlist, or -1.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_ext_cmd_index(string name)
@@ -329,6 +334,8 @@ module Native =
         // during startup we auto-answer pre-game prompts until the first command
         let mutable initializing = true
         let mutable over = false
+        // NetHack's `ubirthday`, read once the game is running; a per-game id.
+        let mutable gameId = 0L
         // set by KeyFor(Extended cmd); consumed by the next get_ext_cmd callback
         let mutable pendingExtCmd : string option = None
         // keystrokes still to feed for a single multi-character command (a count
@@ -399,6 +406,9 @@ module Native =
             |> Map.ofSeq
 
         member private this.BuildObservation() : Observation =
+            // Latch the game id once the game is running (ubirthday is set during
+            // character creation, well before the first observation).
+            if gameId = 0L then gameId <- nhglue_game_id ()
             let rows =
                 [ for y in 0 .. ROWNO - 1 ->
                     String(Array.init COLNO (fun x -> glyphs[y, x])) ]
@@ -675,7 +685,7 @@ module Native =
                 if outbox.TryTake(&item, StepTimeoutMs) then item
                 else Faulted(TimeoutException "NetHack did not respond within the step timeout")
             let state obs pending isOver =
-                { Continuation = null
+                { Continuation = null; GameId = gameId
                   Observation = obs; Pending = pending; Over = isOver }
             match signal with
             | Settled(o, p) -> state o p false
@@ -725,7 +735,7 @@ module Native =
 
         member this.Step(a: NetHack.Api.Action) : GameState =
             if over then
-                { Continuation = null
+                { Continuation = null; GameId = gameId
                   Observation = lastObs; Pending = GameOver "the game ended"; Over = true }
             else
                 inbox.Add a
