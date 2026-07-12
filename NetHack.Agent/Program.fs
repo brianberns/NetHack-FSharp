@@ -94,23 +94,45 @@ module Program =
         | GameOver _ ->
             "The game is over."
 
+    /// Expands any ASCII control characters in the given text.
+    let expandCtrl (text : string) =
+        String.concat "" [
+            for c in text do
+                let value = int c
+                if value >= 1 && value <= 26 then
+                    let letter = char (value + 96)
+                    $"[Ctrl-{letter}]"
+                else
+                    string c
+        ]
+
+    /// Describes the given agent action.
+    let getActionDesc aa =
+        if aa.Count <= 1 then
+            $"{aa.Kind} {expandCtrl aa.Value}"
+        else
+            $"{aa.Kind} {expandCtrl aa.Value} ({aa.Count})"
+
     /// Creates a prompt for the agent based on the current state.
-    let getPrompt (state : GameState) prediction (notes : _[]) =
+    let getPrompt (state : GameState) prevActionOpt (notes : _[]) =
         String.concat "\n" [
             "You are an expert NetHack player controlling a character."
             "The current game state (JSON):"
             Json.toJson state
             getGuidance state.Pending
-            if not (String.IsNullOrWhiteSpace(prediction)) then
-                "Your prediction from last turn of what the current game \
-                state should be:"
-                prediction
-                "Compare this prediction against reality to determine \
-                if your current plan is working."
+            match prevActionOpt with
+                | Some aa ->
+                    $"The action you took on the last turn: {getActionDesc aa}"
+                    "Your prediction from last turn of what the current game \
+                    state should be:"
+                    aa.Prediction
+                    "Compare this prediction against reality to determine \
+                    if you need to adjust your plan."
+                | None -> ()
             if notes.Length > 0 then
                 $"Your notes:"
                 for i = 0 to notes.Length - 1 do
-                    $"ID {i+1}: %s{notes[i]}"
+                    $"{i+1}: %s{notes[i]}"
         ]
 
     let model = Gemini.flash
@@ -124,18 +146,6 @@ module Program =
         Agent.create config model
 
     let engine = Native.create ()
-
-    /// Expands any ASCII control characters in the given text.
-    let expandCtrl (text : string) =
-        String.concat "" [
-            for c in text do
-                let value = int c
-                if value >= 1 && value <= 26 then
-                    let letter = char (value + 96)
-                    $"[Ctrl-{letter}]"
-                else
-                    string c
-        ]
 
     let isNullOrEmpty (array : _[]) =
         if isNull array then true
@@ -190,7 +200,7 @@ module Program =
             wtr.WriteLine()
             wtr.WriteLine("Existing notes:")
             for i = 0 to notes.Length - 1 do
-                wtr.WriteLine($"   ID {i+1}: %s{notes[i]}")
+                wtr.WriteLine($"   {i+1}: %s{notes[i]}")
         if not (isNullOrEmpty aa.NotesToAdd) then
             wtr.WriteLine()
             wtr.WriteLine("Notes to add:")
@@ -202,7 +212,7 @@ module Program =
 
             // action to take in the given state
         wtr.WriteLine()
-        wtr.WriteLine($"Action: {aa.Kind} {expandCtrl aa.Value}")
+        wtr.WriteLine($"Action: {getActionDesc aa})")
 
             // expected result of action
         wtr.WriteLine()
@@ -301,13 +311,14 @@ module Program =
             Array.append notes aa.NotesToAdd
 
     /// Runs the game from the given state.
-    let rec run state prediction notes =
+    let rec run state prevActionOpt notes =
 
         async {
             try
                     // get agent's action
                 let! aa =
-                    let prompt = getPrompt state prediction notes
+                    let prompt =
+                        getPrompt state prevActionOpt notes
                     Agent.getResultAsync<AgentAction> prompt agent
 
                     // display the state prior to applying the action
@@ -319,14 +330,14 @@ module Program =
 
                     // play another turn?
                 if state.Over then return ()
-                else return! run state aa.Prediction notes
+                else return! run state (Some aa) notes
 
             with exn ->
                 match model.TryParseWaitTime exn with
                     | Some duration ->
                         printfn $"Waiting {duration}"
                         do! Async.Sleep(duration)
-                        return! run state prediction notes
+                        return! run state prevActionOpt notes
                     | None ->
                         printfn $"{exn.Message}"
         }
@@ -341,5 +352,5 @@ module Program =
                 |> engine.Start
 
             // run the game and wait for it to finish
-        run state "" Array.empty
+        run state None Array.empty
             |> Async.RunSynchronously
