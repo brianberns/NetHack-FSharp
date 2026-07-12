@@ -136,13 +136,13 @@ module Program =
                     string c
         ]
 
-    let isNonEmpty (array : _[]) =
-        if isNull array then false
-        else array.Length > 0
+    let isNullOrEmpty (array : _[]) =
+        if isNull array then true
+        else array.Length = 0
 
     /// Creates a view of the given state and the action to be
     /// taken in that state.
-    let createView state (memories : _[]) aa =
+    let createView state memories aa =
 
         use wtr = new StringWriter()
 
@@ -185,17 +185,17 @@ module Program =
                 wtr.WriteLine($"Pending: {pending}")
 
             // memory
-        if memories.Length > 0 then
+        if not (isNullOrEmpty memories) then
             wtr.WriteLine()
             wtr.WriteLine("Existing memories:")
             for i = 0 to memories.Length - 1 do
                 wtr.WriteLine($"ID {i+1}: %s{memories[i]}")
-        if isNonEmpty aa.MemoriesToAdd then
+        if not (isNullOrEmpty aa.MemoriesToAdd) then
             wtr.WriteLine()
             wtr.WriteLine("Memories to add:")
             for memory in aa.MemoriesToAdd do
                 wtr.WriteLine($"   {memory}")
-        if isNonEmpty aa.MemoriesToDelete then
+        if not (isNullOrEmpty aa.MemoriesToDelete) then
             wtr.WriteLine()
             wtr.WriteLine($"Memories to delete: %A{aa.MemoriesToDelete}")
 
@@ -277,11 +277,12 @@ module Program =
 
             // delete memories
         let idxs =
-            if isNonEmpty aa.MemoriesToDelete then
+            if isNullOrEmpty aa.MemoriesToDelete then
+                Seq.empty
+            else
                 aa.MemoriesToDelete
                     |> Seq.sortDescending
                     |> Seq.map (fun id -> id - 1)
-            else Seq.empty
         let memories =
             (memories, idxs)
                 ||> Seq.fold (fun memories idx ->
@@ -290,10 +291,10 @@ module Program =
                     else memories)
 
             // add memories
-        if isNonEmpty aa.MemoriesToAdd then
-            Array.append memories aa.MemoriesToAdd
-        else
+        if isNullOrEmpty aa.MemoriesToAdd then
             memories
+        else
+            Array.append memories aa.MemoriesToAdd
 
     /// Runs the game from the given state.
     let rec run state prediction memories =
