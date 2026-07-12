@@ -108,24 +108,6 @@ type Agent =
 
 module Agent =
 
-    (*
-    // e.g. "try again in 3m10.7712s"
-    let private tryParseWaitTime text =
-        let m = Regex.Match(text, @"try again in ([\d.hms]+)")
-        if m.Success then
-            Regex.Matches(m.Groups[1].Value, @"([\d.]+)(ms|h|m|s)")
-                |> Seq.map (fun m ->
-                    let value = Double.Parse(m.Groups[1].Value)
-                    match m.Groups[2].Value with
-                        | "h"  -> TimeSpan.FromHours value
-                        | "m"  -> TimeSpan.FromMinutes value
-                        | "ms" -> TimeSpan.FromMilliseconds value
-                        | _    -> TimeSpan.FromSeconds value)
-                |> Seq.reduce (+)
-                |> Some
-        else None
-    *)
-
     /// Creates an agent.
     let create (config : IConfiguration) model =
         let openAIClient =
