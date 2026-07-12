@@ -43,7 +43,7 @@ type AgentAction =
         Value : string
 
         [<Description("Optional repeat count for a Key command, such \
-            as 's' (search) or '.' (rest)")>]
+            as 's' (search) or '.' (rest).")>]
         Count : int
 
         [<Description("A sentence quantifying the expected result of \
