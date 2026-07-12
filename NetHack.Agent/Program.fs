@@ -42,10 +42,8 @@ type AgentAction =
             Proceed/Cancel: ignored.")>]
         Value : string
 
-        [<Description("Optional repeat count for a Key command, e.g. 20 with \
-            Key='s' to search/rest 20 turns in a single command. Use this to \
-            rest efficiently instead of one turn at a time. Ignored (treated \
-            as 1) for other kinds; use Run to move many tiles at once.")>]
+        [<Description("Optional repeat count for a Key command, such \
+            as 's' (search) or '.' (rest)")>]
         Count : int
 
         [<Description("A sentence quantifying the expected result of \
@@ -64,27 +62,31 @@ module Program =
     /// Provides guidance for responding to a prompt.
     let getGuidance = function
         | Direction _ ->
-            "Specify a direction via Kind=Move, or Kind=Cancel to back out."
+            "Specify a direction via Kind=Move, or Kind=Cancel to \
+            back out."
         | MultiChoice(_, choices, _) ->
-            let options =
-                if choices = "" then "one of the characters offered in the question"
+            let desc =
+                if choices = "" then "one of the characters offered"
                 else $"one character from '{choices}'"
-            $"Reply Kind=Answer, Value {options}; or Kind=Cancel to back out."
+            $"Reply Kind=Answer with Value set to {desc}, or Kind=Cancel \
+            to back out."
         | Quantity _ ->
-            "Specify a quantity via Kind=Number, or Kind=Cancel to back out."
+            "Specify a quantity via Kind=Number, or Kind=Cancel to \
+            back out."
         | TextLine _ ->
             "Reply Kind=Text, or Kind=Cancel to back out."
         | Menu(_, PickNone, _) ->
             "Reply Kind=Proceed to dismiss the menu."
         | Menu _ ->
-            "Reply Kind=Select with the item letters, or Kind=Proceed to cancel."
+            "Reply Kind=Select with the item letters, or Kind=Cancel to \
+            cancel."
         | More ->
             "Reply Kind=Proceed to continue."
         | Command ->
-            "Reply with a command: Kind=Move (one step), Kind=Run (travel a \
-            direction until something notable — use this to cross corridors and \
-            rooms efficiently), Kind=Key for a command key (with Count to repeat, \
-            e.g. Key='s' Count=20 to rest 20 turns at once), or Kind=Extended."
+            "Reply with a command: Kind=Move (one step), Kind=Run (travel \
+            a direction until something notable — use this to cross \
+            corridors and rooms efficiently), Kind=Key for a command key \
+            (with Count to repeat), or Kind=Extended."
         | GameOver _ ->
             "The game is over."
 
