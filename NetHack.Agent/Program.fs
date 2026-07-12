@@ -264,7 +264,8 @@ module Program =
     /// Updates the given memory database.
     let updateMemory aa (memories : _[]) =
         let idxs =
-            aa.MemoriesToDelete
+            (if aa.MemoriesToDelete = null then Seq.empty
+            else aa.MemoriesToDelete)
                 |> Seq.sortDescending
                 |> Seq.map (fun id -> id - 1)
         let memories =
