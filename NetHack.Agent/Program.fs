@@ -182,11 +182,14 @@ module Program =
 
             // memory
         wtr.WriteLine()
-        wtr.WriteLine("Existing memories:")
-        for i = 0 to memories.Length - 1 do
-            wtr.WriteLine($"ID {i+1}: %s{memories[i]}")
-        wtr.WriteLine($"Memory to add: {aa.MemoryToAdd}")
-        wtr.WriteLine($"Memories to delete: %A{aa.MemoriesToDelete}")
+        if memories.Length > 0 then
+            wtr.WriteLine("Existing memories:")
+            for i = 0 to memories.Length - 1 do
+                wtr.WriteLine($"ID {i+1}: %s{memories[i]}")
+        if not (String.IsNullOrWhiteSpace(aa.MemoryToAdd)) then
+            wtr.WriteLine($"Memory to add: {aa.MemoryToAdd}")
+        if not (isNull aa.MemoriesToDelete) then
+            wtr.WriteLine($"Memories to delete: %A{aa.MemoriesToDelete}")
 
             // action to take in the given state
         wtr.WriteLine()
