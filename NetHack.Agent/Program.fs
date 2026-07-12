@@ -50,10 +50,10 @@ type AgentAction =
             this action, such as the hero's expected new location.")>]
         Prediction : string
 
-        [<Description("Optional new memory that describes something \
-        you've learned or decided on this turn. This memory will carry \
+        [<Description("Optional new memories that describe what \
+        you've learned or decided on this turn. Each memory will carry \
         over to subsequent turns until you delete it.")>]
-        MemoryToAdd : string
+        MemoriesToAdd : string[]
 
         [<Description("IDs of memories to delete because they are now \
         incorrect or irrelevant.")>]
@@ -136,6 +136,10 @@ module Program =
                     string c
         ]
 
+    let isNonEmpty (array : _[]) =
+        if isNull array then false
+        else array.Length > 0
+
     /// Creates a view of the given state and the action to be
     /// taken in that state.
     let createView state (memories : _[]) aa =
@@ -181,14 +185,18 @@ module Program =
                 wtr.WriteLine($"Pending: {pending}")
 
             // memory
-        wtr.WriteLine()
         if memories.Length > 0 then
+            wtr.WriteLine()
             wtr.WriteLine("Existing memories:")
             for i = 0 to memories.Length - 1 do
                 wtr.WriteLine($"ID {i+1}: %s{memories[i]}")
-        if not (String.IsNullOrWhiteSpace(aa.MemoryToAdd)) then
-            wtr.WriteLine($"Memory to add: {aa.MemoryToAdd}")
-        if not (isNull aa.MemoriesToDelete) then
+        if isNonEmpty aa.MemoriesToAdd then
+            wtr.WriteLine()
+            wtr.WriteLine("Memories to add:")
+            for memory in aa.MemoriesToAdd do
+                wtr.WriteLine($"   {memory}")
+        if isNonEmpty aa.MemoriesToDelete then
+            wtr.WriteLine()
             wtr.WriteLine($"Memories to delete: %A{aa.MemoriesToDelete}")
 
             // action to take in the given state
@@ -266,21 +274,26 @@ module Program =
 
     /// Updates the given memory database.
     let updateMemory aa (memories : _[]) =
+
+            // delete memories
         let idxs =
-            (if aa.MemoriesToDelete = null then Seq.empty
-            else aa.MemoriesToDelete)
-                |> Seq.sortDescending
-                |> Seq.map (fun id -> id - 1)
+            if isNonEmpty aa.MemoriesToDelete then
+                aa.MemoriesToDelete
+                    |> Seq.sortDescending
+                    |> Seq.map (fun id -> id - 1)
+            else Seq.empty
         let memories =
             (memories, idxs)
                 ||> Seq.fold (fun memories idx ->
                     if idx >= 0 && idx < memories.Length then
                         Array.removeAt idx memories
                     else memories)
-        if String.IsNullOrWhiteSpace(aa.MemoryToAdd) then
-            memories
+
+            // add memories
+        if isNonEmpty aa.MemoriesToAdd then
+            Array.append memories aa.MemoriesToAdd
         else
-            [| yield! memories; aa.MemoryToAdd |]
+            memories
 
     /// Runs the game from the given state.
     let rec run state prediction memories =
