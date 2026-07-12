@@ -122,6 +122,20 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     let twoStacks =
         let afterInv3 = engine.Step inv3 Proceed
         engine.Step (engine.Step afterInv3 (Key 'd')) (Answer ringKey.Value)
+
+    // Picking up from this two-item pile must open a populated selection menu.
+    // Pickup rows carry no preset accelerator (ch=0) and were previously
+    // dropped, so the menu came back empty and was silently auto-cancelled —
+    // nothing picked up, no message. Open it, assert both items are offered,
+    // then cancel without taking anything so the pile survives for the checks
+    // below.
+    let twoStacks =
+        let pickMenu = engine.Step twoStacks (Key ',')
+        match pickMenu.Pending with
+        | Menu (_, _, its) ->
+            Assert.True(List.length its >= 2, "pickup menu should list both pile items")
+        | other -> failwith $"expected a 'Pick up what?' Menu, got {other}"
+        engine.Step pickMenu Proceed          // cancel the menu; pile untouched
     let pileCell = twoStacks.Observation.Hero
     let mutable stepped = twoStacks
     for dir in [ Move East; Move West; Move South; Move North ] do

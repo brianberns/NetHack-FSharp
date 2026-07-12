@@ -120,6 +120,9 @@ let private nativeDemo () =
 
 [<EntryPoint>]
 let main argv =
+    // The map uses non-ASCII glyphs (box-drawing walls, ▫ doorway, ...); render
+    // them correctly regardless of the console's default code page.
+    Console.OutputEncoding <- System.Text.Encoding.UTF8
     if argv |> Array.contains "native-demo" then nativeDemo () else
     if argv |> Array.contains "dump" then dump () else
 

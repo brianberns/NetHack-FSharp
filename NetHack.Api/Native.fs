@@ -499,16 +499,29 @@ module Native =
                 menuItems.Clear(); menuIdents.Clear(); menuTitle <- ""
             | "shim_add_menu" ->
                 // args: window,glyphinfo,identifier(p),ch(0),gch,attr,clr,str,itemflags
-                let ch = char (int (argAt args 3))
+                let ch0 = char (int (argAt args 3))
                 let identPtr = nativeint (argAt args 2)
-                // selectable items have an accelerator and a non-null identifier
-                if ch <> '\000' && identPtr <> IntPtr.Zero then
+                if identPtr <> IntPtr.Zero then
                     if anythingSize = 0 then anythingSize <- nhglue_anything_size ()
                     let bytes = Array.zeroCreate<byte> anythingSize
                     Marshal.Copy(identPtr, bytes, 0, anythingSize)
-                    menuIdents[ch] <- bytes
-                    menuItems.Add { Key = ch; Text = strAt args 7; Glyph = None
-                                    Count = None; Selected = false }
+                    // A selectable row carries a non-zero identifier; non-selectable
+                    // headers/separators pass a pointer to a zeroed `anything`.
+                    if bytes |> Array.exists (fun b -> b <> 0uy) then
+                        // Inventory-style menus supply the item's own accelerator in
+                        // ch; pickup and other object menus pass ch=0 and let the
+                        // menu library auto-letter them — which never runs in this
+                        // headless shim, so assign the next free letter ourselves.
+                        let ch =
+                            if ch0 <> '\000' then ch0
+                            else
+                                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                                |> Seq.tryFind (fun c -> not (menuIdents.ContainsKey c))
+                                |> Option.defaultValue '\000'
+                        if ch <> '\000' then
+                            menuIdents[ch] <- bytes
+                            menuItems.Add { Key = ch; Text = strAt args 7; Glyph = None
+                                            Count = None; Selected = false }
             | "shim_end_menu" -> menuTitle <- strAt args 1
             // ---- input requests: settle points ----
             | "shim_nhgetch" | "shim_nh_poskey" ->
