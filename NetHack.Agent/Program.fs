@@ -50,11 +50,14 @@ type AgentAction =
             this action, such as the hero's expected new location.")>]
         Prediction : string
 
-        [<Description("Persistent memory that carries to the next \
-            turn. Use this to keep track of what you've learned \
-            and what you're planning. Be thorough, detailed, and \
-            consistent.")>]
-        Note : string
+        [<Description("Optional new memory that describes something \
+        you've learned or decided on this turn. This memory will carry \
+        over to subsequent turns until you delete it.")>]
+        MemoryToAdd : string
+
+        [<Description("IDs of memories to delete because they are now \
+        incorrect or irrelevant.")>]
+        MemoriesToDelete : int[]
     }
 
 module Program =
@@ -91,7 +94,7 @@ module Program =
             "The game is over."
 
     /// Creates a prompt for the agent based on the current state.
-    let getPrompt (state : GameState) prediction note =
+    let getPrompt (state : GameState) prediction (memories : _[]) =
         String.concat "\n" [
             "You are an expert NetHack player controlling a character."
             "The current game state (JSON):"
@@ -103,8 +106,10 @@ module Program =
                 prediction
                 "Compare this prediction against reality to determine \
                 if your current plan is working."
-            if not (String.IsNullOrWhiteSpace(note)) then
-                $"Your note from last turn:"; note
+            if memories.Length > 0 then
+                $"Your memories:"
+                for i = 0 to memories.Length - 1 do
+                    $"ID {i+1}: %s{memories[i]}"
         ]
 
     let model = Gemini.flash
@@ -133,7 +138,7 @@ module Program =
 
     /// Creates a view of the given state and the action to be
     /// taken in that state.
-    let createView state aa =
+    let createView state (memories : _[]) aa =
 
         use wtr = new StringWriter()
 
@@ -175,15 +180,21 @@ module Program =
             | pending ->
                 wtr.WriteLine($"Pending: {pending}")
 
+            // memory
+        wtr.WriteLine()
+        wtr.WriteLine("Existing memories:")
+        for i = 0 to memories.Length - 1 do
+            wtr.WriteLine($"ID {i+1}: %s{memories[i]}")
+        wtr.WriteLine($"Memory to add: {aa.MemoryToAdd}")
+        wtr.WriteLine($"Memories to delete: %A{aa.MemoriesToDelete}")
+
             // action to take in the given state
         wtr.WriteLine()
-        wtr.WriteLine($"{aa.Kind} {expandCtrl aa.Value}")
-        wtr.WriteLine()
-        wtr.WriteLine(aa.Note)
+        wtr.WriteLine($"Action: {aa.Kind} {expandCtrl aa.Value}")
 
             // expected result of action
         wtr.WriteLine()
-        wtr.WriteLine(aa.Prediction)
+        wtr.WriteLine($"Prediction: {aa.Prediction}")
 
             // divider
         wtr.WriteLine()
@@ -192,8 +203,8 @@ module Program =
         wtr.ToString()
 
     /// Renders a view of the given state.
-    let render state aa =
-        let view = createView state aa
+    let render state memories aa =
+        let view = createView state memories aa
         Console.Write(view)
 
         do
@@ -250,32 +261,50 @@ module Program =
             | _ ->
                 Proceed
 
+    /// Updates the given memory database.
+    let updateMemory aa (memories : _[]) =
+        let idxs =
+            aa.MemoriesToDelete
+                |> Seq.sortDescending
+                |> Seq.map (fun id -> id - 1)
+        let memories =
+            (memories, idxs)
+                ||> Seq.fold (fun memories idx ->
+                    if idx >= 0 && idx < memories.Length then
+                        Array.removeAt idx memories
+                    else memories)
+        if String.IsNullOrWhiteSpace(aa.MemoryToAdd) then
+            memories
+        else
+            [| yield! memories; aa.MemoryToAdd |]
+
     /// Runs the game from the given state.
-    let rec run state prediction note =
+    let rec run state prediction memories =
 
         async {
             try
                     // get agent's action
                 let! aa =
-                    let prompt = getPrompt state prediction note
+                    let prompt = getPrompt state prediction memories
                     Agent.getResultAsync<AgentAction> prompt agent
 
                     // display the state prior to applying the action
-                render state aa
+                render state memories aa
 
-                    // update game state
+                    // update game state and memories
                 let state = engine.Step state (toAction aa)
+                let memories = updateMemory aa memories
 
                     // play another turn?
                 if state.Over then return ()
-                else return! run state aa.Prediction aa.Note
+                else return! run state aa.Prediction memories
 
             with exn ->
                 match model.TryParseWaitTime exn with
                     | Some duration ->
                         printfn $"Waiting {duration}"
                         do! Async.Sleep(duration)
-                        return! run state prediction note
+                        return! run state prediction memories
                     | None ->
                         printfn $"{exn.Message}"
         }
@@ -290,5 +319,5 @@ module Program =
                 |> engine.Start
 
             // run the game and wait for it to finish
-        run state "" ""
+        run state "" Array.empty
             |> Async.RunSynchronously
