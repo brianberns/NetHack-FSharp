@@ -246,13 +246,18 @@ module Native =
         // is never reported (defaults off). 'hilite_pile' marks squares holding
         // more than one object (a pile) — NetHack always tracks this internally
         // but only surfaces it to a player with this opt-in option; enabling it
-        // makes reporting a pile flag fair.
+        // makes reporting a pile flag fair. 'mention_decor' announces furniture
+        // (altar, fountain, stairs, ...) as the hero steps onto it; without it the
+        // step-on is silent and, since the hero's glyph hides the feature and
+        // terrain is not reported as an entity, the caller has no way to tell it
+        // is standing on, e.g., an altar. All three are standard opt-in options a
+        // human can enable, so they surface only fair, UI-available information.
         // No symset is set on purpose: nhglue_map_char re-renders the map from the
         // glyph itself (box-drawing walls, disambiguated terrain), so the compiled
         // default ASCII symset is fine — and we avoid symset:plain, whose only
         // effect is to draw wall corners as '+', colliding with closed doors.
         let baseOpts =
-            "OPTIONS=time,hilite_pile\nOPTIONS=number_pad:0\n"
+            "OPTIONS=time,hilite_pile,mention_decor\nOPTIONS=number_pad:0\n"
         File.WriteAllText(Path.Combine(baseDir, "sandbox.nethackrc"), baseOpts)
         // Wizard games (integration tests) additionally start with no pet, so
         // scripted scenarios are deterministic — a pet follows the hero and swaps
