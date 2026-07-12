@@ -212,7 +212,7 @@ module Program =
 
             // action to take in the given state
         wtr.WriteLine()
-        wtr.WriteLine($"Action: {getActionDesc aa})")
+        wtr.WriteLine($"Action: {getActionDesc aa}")
 
             // expected result of action
         wtr.WriteLine()
