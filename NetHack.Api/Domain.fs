@@ -154,6 +154,11 @@ type Action =
     | Proceed                  // acknowledge a --More-- prompt
     | Cancel                   // back out of a prompt (sends ESC): decline a
                                // MultiChoice, abort a TextLine/Quantity/menu/Direction
+    | Run      of Direction    // travel in a direction until something notable
+                               // (a junction, item, monster, ...); one command
+                               // that covers many tiles (NetHack's 'G'+direction)
+    | RepeatKey of int * char  // a command key preceded by a repeat count, e.g.
+                               // (20, 's') to search/rest 20 turns in one command
 
 /// Options for starting a new game. `None` fields let the engine choose (or,
 /// eventually, prompt through the callbacks). `Seed` fixes the RNG for

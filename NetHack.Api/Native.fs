@@ -322,6 +322,11 @@ module Native =
         let mutable over = false
         // set by KeyFor(Extended cmd); consumed by the next get_ext_cmd callback
         let mutable pendingExtCmd : string option = None
+        // keystrokes still to feed for a single multi-character command (a count
+        // prefix like "20s", or a run "G" + direction). Filled when a Command
+        // action expands to several keys; drained by successive nhgetch requests
+        // before the engine settles and asks the API thread for the next action.
+        let pendingKeys = System.Collections.Generic.Queue<int>()
         // last published screen, so an Ended/Faulted state still carries a map
         let mutable lastObs = emptyObservation
 
@@ -515,7 +520,17 @@ module Native =
                 if initializing then
                     // first command request => hand control to the caller
                     initializing <- false
-                writeInt (this.KeyFor(this.Settle Command))
+                // Still feeding a multi-key command (count prefix / run)? Supply
+                // the next queued key without asking the API thread again, so the
+                // whole "20s" or "Gl" reaches NetHack as one uninterrupted command.
+                if pendingKeys.Count > 0 then
+                    writeInt (pendingKeys.Dequeue())
+                else
+                    match this.KeysFor(this.Settle Command) with
+                    | first :: rest ->
+                        for k in rest do pendingKeys.Enqueue k
+                        writeInt first
+                    | [] -> writeInt (int ' ')
             | "shim_yn_function" ->
                 let query = strAt args 0
                 let choices = strAt args 1
@@ -584,6 +599,22 @@ module Native =
                 | None -> writeInt -1
             | "shim_message_menu" -> writeChar '\033'
             | _ -> ()   // notifications with nothing to return
+
+        /// Expand a Command-level Action into the full keystroke sequence NetHack
+        /// should receive. Most actions are a single key; Run and RepeatKey expand
+        /// to several (a "G"+direction, or a count prefix followed by a command),
+        /// which the nhgetch handler feeds one at a time before settling again.
+        member private this.KeysFor(a: NetHack.Api.Action) : int list =
+            match a with
+            | Run dir ->
+                // 'G' + direction: travel that way until something notable.
+                [ int 'G'; this.KeyFor(Move dir) ]
+            | RepeatKey(n, c) when n >= 2 ->
+                // Type the count's digits, then the command key: e.g. "20" + 's'.
+                let n = min n 9999
+                [ for d in string n -> int d ] @ [ int c ]
+            | RepeatKey(_, c) -> [ int c ]
+            | other -> [ this.KeyFor other ]
 
         /// Translate an Action into the keystroke NetHack expects from nhgetch.
         member private _.KeyFor(a: NetHack.Api.Action) : int =

@@ -131,3 +131,21 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
         stepped.Observation.Entities
         |> List.exists (fun e -> e.Pos = pileCell && e.Kind = GlyphKind.Object && e.Pile),
         "the vacated two-item square should be reported as a pile (Pile = true)")
+
+    // Multi-key commands are fed as a single Step. RepeatKey types a count
+    // prefix ("10s") so one call rests many turns: the turn counter must jump by
+    // more than the single turn a lone 's' would cost, proving the prefix took.
+    let beforeRest = stepped.Observation.Status.Turns
+    let rested = engine.Step stepped (RepeatKey(10, 's'))
+    Assert.Equal(Command, rested.Pending)
+    Assert.True(
+        rested.Observation.Status.Turns - beforeRest >= 2L,
+        $"RepeatKey(10,'s') should rest several turns in one command, but Turns \
+          went {beforeRest} -> {rested.Observation.Status.Turns}")
+
+    // Run feeds "G" + a direction key; the exact distance depends on the map,
+    // but it must remain a well-formed Command state (the extra keys don't
+    // derail the input stream).
+    let ran = engine.Step rested (Run West)
+    Assert.Equal(Command, ran.Pending)
+    Assert.Equal(21, List.length ran.Observation.Rows)

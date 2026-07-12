@@ -104,9 +104,12 @@ module Stub =
         else
             state { w with Hero = target; Turns = w.Turns + 1L } [] Command
 
-    let private step (state0: GameState) (action: Action) : GameState =
+    let rec private step (state0: GameState) (action: Action) : GameState =
         let w = state0.Continuation :?> World
         match state0.Pending, action with
+        // The stub takes a single step: a run is one move, a repeat is one key.
+        | _, Run dir -> step state0 (Move dir)
+        | _, RepeatKey(_, c) -> step state0 (Key c)
         // Answering the "drink from the fountain?" question.
         | MultiChoice _, Answer c when System.Char.ToLower c = 'y' ->
             state { w with Turns = w.Turns + 1L }

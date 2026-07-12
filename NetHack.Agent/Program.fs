@@ -23,6 +23,7 @@ type ActionKind =
     | Proceed = 6
     | Extended = 7
     | Cancel = 8
+    | Run = 9
 
 /// Action DTO the model returns each turn.
 type AgentAction =
@@ -31,7 +32,7 @@ type AgentAction =
         Kind : ActionKind
 
         [<Description("Argument for the action. \
-            Move: one of N|S|E|W|NE|NW|SE|SW. \
+            Move/Run: one of N|S|E|W|NE|NW|SE|SW. \
             Key/Answer: a single character. \
             Text: the line to type. \
             Number: an integer. \
@@ -39,6 +40,12 @@ type AgentAction =
             Extended: an extended command name (e.g. loot, pray, etc.). \
             Proceed/Cancel: ignored.")>]
         Value : string
+
+        [<Description("Optional repeat count for a Key command, e.g. 20 with \
+            Key='s' to search/rest 20 turns in a single command. Use this to \
+            rest efficiently instead of one turn at a time. Ignored (treated \
+            as 1) for other kinds; use Run to move many tiles at once.")>]
+        Count : int
 
         [<Description("A sentence quantifying the expected result of \
             this action, such as the hero's expected new location.")>]
@@ -73,8 +80,10 @@ module Program =
         | More ->
             "Reply Kind=Proceed to continue."
         | Command ->
-            "Reply with a command: Kind=Move, Kind=Key for a command key, \
-            or Kind=Extended."
+            "Reply with a command: Kind=Move (one step), Kind=Run (travel a \
+            direction until something notable — use this to cross corridors and \
+            rooms efficiently), Kind=Key for a command key (with Count to repeat, \
+            e.g. Key='s' Count=20 to rest 20 turns at once), or Kind=Extended."
         | GameOver _ ->
             "The game is over."
 
@@ -195,23 +204,29 @@ module Program =
     /// action.
     let toAction aa =
         let value = (if isNull aa.Value then "" else aa.Value).Trim()
+        // Parse a compass/vertical direction; None when unrecognized.
+        let direction () =
+            match value.ToLowerInvariant() with
+                | "n" | "north" -> Some North
+                | "s" | "south" -> Some South
+                | "e" | "east"  -> Some East
+                | "w" | "west"  -> Some West
+                | "ne" | "northeast" -> Some Northeast
+                | "nw" | "northwest" -> Some Northwest
+                | "se" | "southeast" -> Some Southeast
+                | "sw" | "southwest" -> Some Southwest
+                | "up"   | "<" -> Some Up
+                | "down" | ">" -> Some Down
+                | _ -> None
         match aa.Kind with
             | ActionKind.Move ->
-                match value.ToLowerInvariant() with
-                    | "n" | "north" -> Move North
-                    | "s" | "south" -> Move South
-                    | "e" | "east"  -> Move East
-                    | "w" | "west"  -> Move West
-                    | "ne" | "northeast" -> Move Northeast
-                    | "nw" | "northwest" -> Move Northwest
-                    | "se" | "southeast" -> Move Southeast
-                    | "sw" | "southwest" -> Move Southwest
-                    | "up"   | "<" -> Move Up
-                    | "down" | ">" -> Move Down
-                    | _ -> Key 's'
+                match direction () with Some d -> Move d | None -> Key 's'
+            | ActionKind.Run ->
+                match direction () with Some d -> Run d | None -> Key 's'
             | ActionKind.Key ->
-                if value.Length > 0 then Key value[0]
-                else Proceed
+                if value.Length = 0 then Proceed
+                elif aa.Count >= 2 then RepeatKey(aa.Count, value[0])
+                else Key value[0]
             | ActionKind.Answer ->
                 Answer (if value.Length > 0 then value[0] else 'y')
             | ActionKind.Text ->
