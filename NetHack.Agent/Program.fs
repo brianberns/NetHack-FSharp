@@ -220,7 +220,10 @@ module Program =
         Console.Write(view)
 
         do
-            use wtr = new StreamWriter("Agent.log", append = true)
+            use wtr =
+                new StreamWriter(
+                    $"Agent{state.GameId}.log",
+                    append = true)
             fprintf wtr "%s" view
 
         Console.WriteLine("Press enter to continue")
