@@ -88,8 +88,8 @@ module Program =
             "Reply Kind=Proceed to continue."
         | Command ->
             "Reply with a command: Kind=Move (one step), Kind=Run (travel \
-            a direction until something notable — use this to cross \
-            corridors and rooms efficiently), Kind=Key for a command key \
+            until something notable is encountered — this is more efficient \
+            than moving one step at a time), Kind=Key for a command key \
             (with Count to repeat), or Kind=Extended."
         | GameOver _ ->
             "The game is over."
