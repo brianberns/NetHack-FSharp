@@ -666,7 +666,7 @@ module Native =
                 if outbox.TryTake(&item, StepTimeoutMs) then item
                 else Faulted(TimeoutException "NetHack did not respond within the step timeout")
             let state obs pending isOver =
-                { Continuation = null; Session = "native"
+                { Continuation = null
                   Observation = obs; Pending = pending; Over = isOver }
             match signal with
             | Settled(o, p) -> state o p false
@@ -716,7 +716,7 @@ module Native =
 
         member this.Step(a: NetHack.Api.Action) : GameState =
             if over then
-                { Continuation = null; Session = "native"
+                { Continuation = null
                   Observation = lastObs; Pending = GameOver "the game ended"; Over = true }
             else
                 inbox.Add a

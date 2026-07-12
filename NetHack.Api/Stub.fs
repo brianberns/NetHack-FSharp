@@ -86,7 +86,6 @@ module Stub =
 
     let private state (w: World) (messages: string list) (pending: Prompt) : GameState =
         { Continuation = box w
-          Session = "stub"
           Observation = observe w messages
           Pending = pending
           Over = (match pending with GameOver _ -> true | _ -> false) }

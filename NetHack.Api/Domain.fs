@@ -130,13 +130,11 @@ type Observation = {
     Messages  : string list    // messages produced by the action that led here
 }
 
-/// The value the API is a function of. `Session` is an opaque token the server
-/// uses to resume the underlying game; `Continuation` holds the in-process
+/// The value the API is a function of. `Continuation` holds the in-process
 /// engine's private state and is never serialized. Callers reason about
 /// `Observation` and `Pending`.
 type GameState = {
     [<JsonIgnore>] Continuation : obj  // opaque, engine-private; excluded from the wire
-    Session     : string               // opaque id echoed to clients
     Observation : Observation
     Pending     : Prompt
     Over        : bool
