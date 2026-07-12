@@ -51,8 +51,8 @@ type AgentAction =
         Prediction : string
 
         [<Description("Optional new memories that describe what \
-        you've learned or decided on this turn. Each memory will carry \
-        over to subsequent turns until you delete it.")>]
+        you've learned or plans you've made on this turn. Each memory \
+        will carry over to subsequent turns until you delete it.")>]
         MemoriesToAdd : string[]
 
         [<Description("IDs of memories to delete because they are now \
@@ -189,7 +189,7 @@ module Program =
             wtr.WriteLine()
             wtr.WriteLine("Existing memories:")
             for i = 0 to memories.Length - 1 do
-                wtr.WriteLine($"ID {i+1}: %s{memories[i]}")
+                wtr.WriteLine($"   ID {i+1}: %s{memories[i]}")
         if not (isNullOrEmpty aa.MemoriesToAdd) then
             wtr.WriteLine()
             wtr.WriteLine("Memories to add:")
