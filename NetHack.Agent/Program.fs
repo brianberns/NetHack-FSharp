@@ -4,6 +4,7 @@ open System
 open System.ComponentModel
 open System.IO
 open System.Reflection
+open System.Text
 open System.Text.Json.Serialization
 
 open Microsoft.Extensions.Configuration
@@ -277,12 +278,15 @@ module Program =
                         printfn $"{exn.Message}"
         }
 
-        // start a new game
-    let state =
-        { NewGame.defaults with
-            Name = Some model.Name }
-            |> engine.Start
+    do
+        Console.OutputEncoding <- Encoding.UTF8
 
-        // run the game and wait for it to finish
-    run state "" ""
-        |> Async.RunSynchronously
+            // start a new game
+        let state =
+            { NewGame.defaults with
+                Name = Some model.Name }
+                |> engine.Start
+
+            // run the game and wait for it to finish
+        run state "" ""
+            |> Async.RunSynchronously
