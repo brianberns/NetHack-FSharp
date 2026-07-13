@@ -85,9 +85,6 @@ module Note =
             Age = 0
         }
 
-    let toString note =
-        $"{note.Text} (Age: {note.Age})"
-
 type NoteDatabase = Note[]
 
 module NoteDatabase =
@@ -260,7 +257,8 @@ module Program =
             wtr.WriteLine()
             wtr.WriteLine("Existing notes:")
             for i = 0 to notes.Length - 1 do
-                wtr.WriteLine($"   {i+1}: {Note.toString notes[i]}")
+                let note = notes[i]
+                wtr.WriteLine($"   {i+1}({note.Age}): {note.Text}")
         if not (Array.isNullOrEmpty aa.NotesToAdd) then
             wtr.WriteLine()
             wtr.WriteLine("Notes to add:")
@@ -269,6 +267,9 @@ module Program =
         if not (Array.isNullOrEmpty aa.NotesToDelete) then
             wtr.WriteLine()
             wtr.WriteLine($"Notes to delete: %A{aa.NotesToDelete}")
+        if not (Array.isNullOrEmpty aa.RelevantNotes) then
+            wtr.WriteLine()
+            wtr.WriteLine($"Relevant notes: %A{aa.RelevantNotes}")
 
             // action to take in the given state
         wtr.WriteLine()
