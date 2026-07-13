@@ -171,6 +171,13 @@ module Program =
 
     let engine = Native.create ()
 
+    let truncateRuler len (chunks : seq<string>) : string =
+        chunks
+            |> Seq.collect id
+            |> Seq.truncate len
+            |> Seq.toArray
+            |> String
+
     /// Creates a view of the given state and the action to be
     /// taken in that state.
     let createView state notes aa =
@@ -183,10 +190,22 @@ module Program =
             wtr.WriteLine($"{msg}")
 
             // dungeon map
+        let rulerTens =
+            Seq.initInfinite (fun i -> $"{i}         ")
+                |> truncateRuler state.Observation.Width
+        let rulerUnits =
+            Seq.initInfinite (fun _ -> "0123456789")
+                |> truncateRuler state.Observation.Width
         wtr.WriteLine()
-        wtr.WriteLine()
-        for row in state.Observation.Rows do
-            wtr.WriteLine($"{row}")
+        wtr.WriteLine($"  {rulerTens}")
+        wtr.WriteLine($"  {rulerUnits}")
+        for (i, row) in Seq.indexed state.Observation.Rows do
+            let toChar n = char n + '0'
+            let cTens = if i % 10 = 0 then toChar (i / 10) else ' '
+            let cUnits = toChar (i % 10)
+            wtr.WriteLine($"{cTens}{cUnits}{row}{cUnits}{cTens}")
+        wtr.WriteLine($"  {rulerUnits}")
+        wtr.WriteLine($"  {rulerTens}")
 
             // hero status
         let status = state.Observation.Status
