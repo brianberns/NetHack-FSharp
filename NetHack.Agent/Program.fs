@@ -111,10 +111,13 @@ module Program =
         | More ->
             "Reply Kind=Proceed to continue."
         | Command ->
-            "Reply with a command: Kind=Move (one step), Kind=Run (travel \
-            until something notable is encountered — this is more efficient \
-            than moving one step at a time), Kind=Key for a command key \
-            (with Count to repeat), or Kind=Extended."
+            "Reply with a command. To move, use Kind=Move (one step) or \
+            Kind=Run (travel until something notable is encountered — \
+            more efficient than single steps). For a named action, such \
+            as kick, loot, pray, apply, force, or dip, use Kind=Extended \
+            with the command name. Use Kind=Key only for a simple command, \
+            such as 's' (search), ',' (pick up), or 'i' (inventory), \
+            optionally with Count to repeat."
         | GameOver _ ->
             "The game is over."
 
