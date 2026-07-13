@@ -170,6 +170,9 @@ module Program =
             "Some tips for navigating the dungeon:"
             "Take the opportunity to move diagonally when possible."
             "Prefer Run over Move when exploring or traversing."
+            "Don't assume you've hit a dead end just because the path \
+            ahead appears to stop. A blank square might just be \
+            unexplored."
         ]
 
     let model = Gemini.flash
