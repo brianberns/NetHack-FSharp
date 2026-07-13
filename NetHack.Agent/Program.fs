@@ -352,7 +352,7 @@ module Program =
                         Array.removeAt idx notes
                     else notes)
 
-            // update note ages
+            // update note ages and cull old notes
         let notes =
             let idxs =
                 if Array.isNullOrEmpty aa.NotesToDelete then
@@ -361,11 +361,13 @@ module Program =
                     aa.RelevantNotes
                         |> Seq.map (fun id -> id - 1)
                         |> set
-            Array.mapi (fun idx note ->
-                { note with
-                    Age =
-                        if idxs.Contains(idx) then 0
-                        else note.Age + 1}) notes
+            Array.indexed notes
+                |> Array.choose (fun (idx, note) ->
+                    if idxs.Contains(idx) then
+                        Some { note with Age = 0 }
+                    elif note.Age < 10 then
+                        Some { note with Age = note.Age + 1 }
+                    else None)
 
             // add new notes
         if Array.isNullOrEmpty aa.NotesToAdd then
