@@ -161,8 +161,8 @@ module Program =
                 for i = 0 to notes.Length - 1 do
                     $"{i+1}: %s{notes[i].Text}"
             "A tip for exploring the dungeon: A diagonal move is often more \
-            effective for navigating corridors and more efficient (requires \
-            fewer steps)."
+            effective (e.g. for navigating corridors) and more efficient \
+            (requires fewer steps)."
         ]
 
     let model = Gemini.flash
