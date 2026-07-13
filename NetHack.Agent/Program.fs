@@ -392,7 +392,7 @@ module Program =
 
                     // update game state and notes
                 let state = engine.Step state (toAction aa)
-                let notes = NoteDatabase.updateNotes aa notes
+                let notes = updateNotes aa notes
 
                     // play another turn?
                 if state.Over then return ()
