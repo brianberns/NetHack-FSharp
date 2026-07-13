@@ -116,6 +116,14 @@ type Prompt =
     | More                                                     // "--More--" paginated message
     | GameOver     of reason: string                          // terminal; no further input
 
+/// An item in the hero's pack. `Letter` is the inventory slot that getobj
+/// prompts refer to (e.g. answer 'q' to "What do you want to wear? [q or ?*]");
+/// `Text` is its description (e.g. "a pair of hard shoes").
+type InventoryItem = {
+    Letter : char
+    Text   : string
+}
+
 /// Everything the caller can see: a readable ASCII map, decoded entities on it,
 /// the status line, and the messages the last action produced.
 type Observation = {
@@ -127,6 +135,7 @@ type Observation = {
     Character : Character      // who the hero is: role / race / gender / alignment
     Entities  : Entity list    // decoded monsters / objects / features / traps
     Status    : Status
+    Inventory : InventoryItem list  // the hero's pack — what the free 'i' command shows
     Messages  : string list    // messages produced by the action that led here
 }
 

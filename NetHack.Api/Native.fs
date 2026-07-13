@@ -57,6 +57,11 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern int private nhglue_floor_object_at(int x, int y, int index, System.Text.StringBuilder buf, int buflen)
 
+    // Inventory letter + description of the index-th item in the hero's pack
+    // (0 when none), read from the invent chain — what the free 'i' command shows.
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
+    extern int private nhglue_inventory_item(int index, System.Text.StringBuilder buf, int buflen)
+
     // 1 when the displayed glyph at a cell marks a pile (>1 object stack), else 0.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_is_pile_at(int x, int y)
@@ -220,7 +225,7 @@ module Native =
           Rows = [ for _ in 1 .. ROWNO -> String(' ', COLNO) ]
           Legend = Map.empty
           Hero = { X = 0; Y = 0 }; Character = emptyCharacter
-          Entities = []; Status = emptyStatus; Messages = [] }
+          Entities = []; Status = emptyStatus; Inventory = []; Messages = [] }
 
     // ---- environment & playground (#6) --------------------------------
 
@@ -449,10 +454,24 @@ module Native =
                         { Pos = hero; Symbol = char ch; Kind = GlyphKind.Object
                           Name = Some(sb.ToString()); Color = "gray"; Pile = false }
                     oi <- oi + 1
+            // The hero's pack, read from the invent chain — what a free 'i' shows,
+            // so getobj prompts (wear/wield/eat/...) that only offer letters can
+            // be resolved to the items those letters name.
+            let inventory = ResizeArray<InventoryItem>()
+            let mutable ii = 0
+            let mutable moreInv = true
+            while moreInv do
+                sb.Clear() |> ignore
+                match nhglue_inventory_item(ii, sb, sb.Capacity) with
+                | 0 -> moreInv <- false
+                | letter ->
+                    inventory.Add { Letter = char letter; Text = sb.ToString() }
+                    ii <- ii + 1
             { Width = COLNO; Height = ROWNO; Rows = rows; Hero = hero
               Legend = this.BuildLegend()
               Character = this.BuildCharacter()
               Entities = List.ofSeq entities; Status = this.BuildStatus()
+              Inventory = List.ofSeq inventory
               Messages = List.ofSeq messages }
 
         /// Called from the game thread when it needs input: publish the current

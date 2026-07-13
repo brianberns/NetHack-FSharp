@@ -70,10 +70,22 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     // fixed for the life of the game.
     Assert.NotEqual(0L, start.GameId)
 
-    // Opening the inventory yields a menu (exercises the select-menu path).
+    // Observation.Inventory carries the hero's pack (letter + description); a
+    // starting character always has some equipment, and every item is lettered.
+    Assert.NotEmpty start.Observation.Inventory
+    Assert.All(
+        start.Observation.Inventory,
+        fun it -> Assert.True(it.Letter <> '\000' && it.Text <> ""))
+
+    // Opening the inventory yields a menu (exercises the select-menu path). Its
+    // letters must match Observation.Inventory — same pack, two views of it.
     let inv = engine.Step start (Key 'i')
     match inv.Pending with
-    | Menu (_, _, items) -> Assert.NotEmpty items
+    | Menu (_, _, items) ->
+        Assert.NotEmpty items
+        Assert.Equal<char list>(
+            items |> List.map (fun it -> it.Key),
+            start.Observation.Inventory |> List.map (fun it -> it.Letter))
     | other -> failwith $"expected an inventory Menu, got {other}"
     Assert.Equal(start.GameId, inv.GameId)   // stable across steps
     let afterInv = engine.Step inv Proceed

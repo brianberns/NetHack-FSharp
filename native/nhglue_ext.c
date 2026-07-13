@@ -170,6 +170,31 @@ nhglue_floor_object_at(int x, int y, int index, char *buf, int buflen)
 }
 
 /*
+ * The index-th item in the hero's inventory: returns its inventory letter
+ * (>0) and fills buf with doname() (e.g. "a pair of hard shoes"); returns 0
+ * when there is no such item. Callers iterate index 0,1,... until it returns
+ * 0. Surfaces exactly what the player could see with the free 'i' command.
+ */
+int nhglue_inventory_item(int index, char *buf, int buflen);
+
+int
+nhglue_inventory_item(int index, char *buf, int buflen)
+{
+    struct obj *otmp;
+    int i = 0;
+
+    if (buf && buflen > 0)
+        buf[0] = '\0';
+    for (otmp = gi.invent; otmp; otmp = otmp->nobj) {
+        if (i++ == index) {
+            copy_name(buf, buflen, doname(otmp));
+            return (int) otmp->invlet;
+        }
+    }
+    return 0;
+}
+
+/*
  * Concise terrain/feature name for the *displayed* glyph at map cell (x,y) —
  * e.g. "corridor", "wall", "staircase up", "fountain", "stone". Uses only what
  * the UI shows (glyph_at), so it reports only terrain the hero actually knows.

@@ -79,11 +79,14 @@ module Stub =
     let private legend : Map<string, string> =
         Map [ ".", "floor of a room"; "|", "wall"; "-", "wall"; "{", "fountain" ]
 
+    let private inventory : InventoryItem list =
+        [ { Letter = 'a'; Text = "an uncursed +1 short sword" } ]
+
     let private observe (w: World) (messages: string list) : Observation =
         { Width = width; Height = height
           Rows = rows w; Legend = legend; Hero = w.Hero
           Character = character; Entities = entities w
-          Status = status w; Messages = messages }
+          Status = status w; Inventory = inventory; Messages = messages }
 
     let private state (w: World) (messages: string list) (pending: Prompt) : GameState =
         { Continuation = box w

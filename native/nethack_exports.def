@@ -7,6 +7,7 @@ EXPORTS
     nhglue_is_pile_at
     nhglue_floor_object_at
     nhglue_feature_at
+    nhglue_inventory_item
     nhglue_map_char
     nhglue_hero_ident
     nhglue_game_id
