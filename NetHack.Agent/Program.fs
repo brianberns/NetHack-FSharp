@@ -300,50 +300,74 @@ module Program =
         Console.WriteLine("Press enter to continue")
         Console.ReadLine() |> ignore
 
+    /// Parses a compass/vertical direction, if possible.
+    let tryParseDirection (text : string) =
+        match text.ToLowerInvariant() with
+            | "n" | "north" -> Some North
+            | "s" | "south" -> Some South
+            | "e" | "east"  -> Some East
+            | "w" | "west"  -> Some West
+            | "ne" | "northeast" -> Some Northeast
+            | "nw" | "northwest" -> Some Northwest
+            | "se" | "southeast" -> Some Southeast
+            | "sw" | "southwest" -> Some Southwest
+            | "up"   | "<" -> Some Up
+            | "down" | ">" -> Some Down
+            | _ -> None
+
     /// Converts the model's action into a strongly-typed NetHack.Api
     /// action.
     let toAction aa =
-        let value = (if isNull aa.Value then "" else aa.Value).Trim()
-        // Parse a compass/vertical direction; None when unrecognized.
-        let direction () =
-            match value.ToLowerInvariant() with
-                | "n" | "north" -> Some North
-                | "s" | "south" -> Some South
-                | "e" | "east"  -> Some East
-                | "w" | "west"  -> Some West
-                | "ne" | "northeast" -> Some Northeast
-                | "nw" | "northwest" -> Some Northwest
-                | "se" | "southeast" -> Some Southeast
-                | "sw" | "southwest" -> Some Southwest
-                | "up"   | "<" -> Some Up
-                | "down" | ">" -> Some Down
-                | _ -> None
+
+        let value =
+            (if isNull aa.Value then ""
+            else aa.Value).Trim()
+
         match aa.Kind with
+
             | ActionKind.Move ->
-                match direction () with Some d -> Move d | None -> Key 's'
+                tryParseDirection value
+                    |> Option.map Move
+                    |> Option.defaultValue (Key 's')
+
             | ActionKind.Run ->
-                match direction () with Some d -> Run d | None -> Key 's'
+                tryParseDirection value
+                    |> Option.map Run
+                    |> Option.defaultValue (Key 's')
+
             | ActionKind.Key ->
-                if value.Length = 0 then Proceed
-                elif aa.Count >= 2 then RepeatKey(aa.Count, value[0])
-                else Key value[0]
+                if value.Length = 0 then
+                    Proceed
+                elif aa.Count >= 2 then
+                    RepeatKey(aa.Count, value[0])
+                else
+                    Key value[0]
+
             | ActionKind.Answer ->
-                Answer (if value.Length > 0 then value[0] else 'y')
+                Answer (
+                    if value.Length > 0 then value[0]
+                    else 'y')
+
             | ActionKind.Text ->
                 Text value
+
             | ActionKind.Extended ->
                 Extended value
+
             | ActionKind.Cancel ->
                 Cancel
+
             | ActionKind.Number ->
-                match Int32.TryParse value with
+                match Int32.TryParse(value) with
                     | true, n -> Number n
                     | _ -> Number 0
+
             | ActionKind.Select ->
                 value
                     |> Seq.where (Char.IsWhiteSpace >> not)
                     |> Seq.toList
                     |> Choose
+
             | _ ->
                 Proceed
 
