@@ -169,7 +169,8 @@ module Program =
                     $"{i+1}: %s{notes[i].Text}"
             "Some tips for navigating the dungeon:"
             "Take the opportunity to move diagonally when possible."
-            "Prefer Run over Move when exploring or traversing."
+            "Prefer Run over Move when exploring. Use Move for precise \
+            navigation."
             "Don't assume you've hit a dead end just because the path \
             ahead appears to stop. A blank square might just be \
             unexplored."
