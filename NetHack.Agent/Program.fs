@@ -184,6 +184,7 @@ module Program =
 
             // dungeon map
         wtr.WriteLine()
+        wtr.WriteLine()
         for row in state.Observation.Rows do
             wtr.WriteLine($"{row}")
 
@@ -337,47 +338,31 @@ module Program =
     /// Updates the given note database.
     let updateNotes aa (notes : _[]) =
 
-            // delete notes
-        let notes =
-            let idxs =
-                if Array.isNullOrEmpty aa.NotesToDelete then
-                    Seq.empty
-                else
-                    aa.NotesToDelete
-                        |> Seq.sortDescending
-                        |> Seq.map (fun id -> id - 1)
-            (notes, idxs)
-                ||> Seq.fold (fun notes idx ->
-                    if idx >= 0 && idx < notes.Length then
-                        Array.removeAt idx notes
-                    else notes)
+        let toIdxSet arr =
+            if Array.isNullOrEmpty arr then Set.empty
+            else arr |> Seq.map (fun id -> id - 1) |> set
 
-            // update note ages and cull old notes
-        let notes =
-            let idxs =
-                if Array.isNullOrEmpty aa.NotesToDelete then
-                    Set.empty
-                else
-                    aa.RelevantNotes
-                        |> Seq.map (fun id -> id - 1)
-                        |> set
-            Array.indexed notes
-                |> Array.choose (fun (idx, note) ->
-                    if idxs.Contains(idx) then
-                        Some { note with Age = 0 }
-                    elif note.Age < 10 then
-                        Some { note with Age = note.Age + 1 }
-                    else None)
+        let deleteIdxs = toIdxSet aa.NotesToDelete
+        let relevantIdxs = toIdxSet aa.RelevantNotes
 
-            // add new notes
-        if Array.isNullOrEmpty aa.NotesToAdd then
+        let kept =
             notes
-        else
-            [|
-                yield! notes
-                for text in aa.NotesToAdd do
-                    Note.create text
-            |]
+                |> Array.indexed
+                |> Array.choose (fun (idx, note) ->
+                    if deleteIdxs.Contains(idx) then       // delete note?
+                        None
+                    elif relevantIdxs.Contains(idx) then   // reset note's age?
+                        Some { note with Age = 0 }
+                    elif note.Age < 10 then                // increment note's age?
+                        Some { note with Age = note.Age + 1 }
+                    else                                   // note aged out
+                        None)
+        if Array.isNullOrEmpty aa.NotesToAdd then
+            kept
+        else [|
+            yield! kept
+            yield! Array.map Note.create aa.NotesToAdd
+        |]
 
     /// Runs the game from the given state.
     let rec run state prevActionOpt notes =
