@@ -26,9 +26,29 @@ type ActionKind =
     | Cancel = 8
     | Run = 9
 
-/// Action DTO the model returns each turn.
+/// Action DTO the model returns each turn. The order of these fields
+/// drives the model to think first and then act.
 type AgentAction =
     {
+        [<Description("Your notes from this turn. Each one will carry \
+        over to subsequent turns. Use these notes to record your plan \
+        and what you've learned.")>]
+        NotesToAdd : string[]
+
+        [<Description("IDs of notes to delete because they are now \
+        incorrect, irrelevant, or repetitive. Use this to keep your \
+        notes tidy because your memory and attention are limited.")>]
+        NotesToDelete : int[]
+
+        [<Description("IDs of notes you found relevant, useful or \
+        informative on this turn.")>]
+        RelevantNotes : int[]
+
+        [<Description("A sentence quantifying the expected result of \
+            the action you are about to take, such as the hero's \
+            expected new location.")>]
+        Prediction : string
+
         [<Description("The kind of action to take.")>]
         Kind : ActionKind
 
@@ -45,24 +65,6 @@ type AgentAction =
         [<Description("Optional repeat count for a Key command, such \
             as 's' (search) or '.' (rest).")>]
         Count : int
-
-        [<Description("A sentence quantifying the expected result of \
-            this action, such as the hero's expected new location.")>]
-        Prediction : string
-
-        [<Description("Your notes from this turn. Each one will carry \
-        over to subsequent turns. Use these notes to record your plan \
-        and what you've learned.")>]
-        NotesToAdd : string[]
-
-        [<Description("IDs of notes to delete because they are now \
-        incorrect, irrelevant, or repetitive. Use this to keep your \
-        notes tidy because your memory and attention are limited.")>]
-        NotesToDelete : int[]
-
-        [<Description("IDs of notes you found relevant, useful or \
-        informative on this turn.")>]
-        RelevantNotes : int[]
     }
 
 module Array =
