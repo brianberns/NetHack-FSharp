@@ -114,8 +114,7 @@ module Program =
             "Reply Kind=Proceed to continue."
         | Command ->
             "Reply with a command. To move, use Kind=Move (one step) or \
-            Kind=Run (travel until something notable is encountered — \
-            more efficient than single steps). For a named action, such \
+            Kind=Run (multiple steps at once). For a named action, such \
             as kick, loot, pray, apply, force, or dip, use Kind=Extended \
             with the command name. Use Kind=Key only for a simple command, \
             such as 's' (search), ',' (pick up), or 'i' (inventory), \
