@@ -51,16 +51,79 @@ type AgentAction =
         Prediction : string
 
         [<Description("Your notes from this turn. Each one will carry \
-        over to subsequent turns until you delete it. Use these notes \
-        to keep track of what you've learned and what you're planning. \
-        Be thorough and detailed to keep yourself on track.")>]
+        over to subsequent turns. Use these notes to record your plan \
+        and what you've learned.")>]
         NotesToAdd : string[]
 
         [<Description("IDs of notes to delete because they are now \
-        incorrect, irrelevant, or redundant. Use this to keep your
+        incorrect, irrelevant, or repetitive. Use this to keep your \
         notes tidy because your memory and attention are limited.")>]
         NotesToDelete : int[]
+
+        [<Description("IDs of notes you found relevant, useful or \
+        informative on this turn.")>]
+        RelevantNotes : int[]
     }
+
+module Array =
+
+    let isNullOrEmpty (array : _[]) =
+        if isNull array then true
+        else array.Length = 0
+
+type Note =
+    {
+        Text : string
+        Age : int
+    }
+
+module Note =
+
+    let create text =
+        {
+            Text = text
+            Age = 0
+        }
+
+    let toString note =
+        $"{note.Text} (Age: {note.Age})"
+
+type NoteDatabase = Note[]
+
+module NoteDatabase =
+
+    /// Updates the given note database.
+    let updateNotes aa (db : NoteDatabase) =
+
+            // delete notes
+        let idxs =
+            if Array.isNullOrEmpty aa.NotesToDelete then
+                Seq.empty
+            else
+                aa.NotesToDelete
+                    |> Seq.sortDescending
+                    |> Seq.map (fun id -> id - 1)
+        let db =
+            (db, idxs)
+                ||> Seq.fold (fun db idx ->
+                    if idx >= 0 && idx < db.Length then
+                        Array.removeAt idx db
+                    else db)
+
+            // increment note ages
+        let db =
+            Array.map (fun note ->
+                { note with Age = note.Age + 1}) db
+
+            // add new notes
+        if Array.isNullOrEmpty aa.NotesToAdd then
+            db
+        else
+            [|
+                yield! db
+                for text in aa.NotesToAdd do
+                    Note.create text
+            |]
 
 module Program =
 
@@ -133,7 +196,7 @@ module Program =
             if notes.Length > 0 then
                 $"Your notes:"
                 for i = 0 to notes.Length - 1 do
-                    $"{i+1}: %s{notes[i]}"
+                    $"{i+1}: %s{notes[i].Text}"
         ]
 
     let model = Gemini.flash
@@ -147,10 +210,6 @@ module Program =
         Agent.create config model
 
     let engine = Native.create ()
-
-    let isNullOrEmpty (array : _[]) =
-        if isNull array then true
-        else array.Length = 0
 
     /// Creates a view of the given state and the action to be
     /// taken in that state.
@@ -197,17 +256,17 @@ module Program =
                 wtr.WriteLine($"Pending: {pending}")
 
             // notes
-        if not (isNullOrEmpty notes) then
+        if not (Array.isNullOrEmpty notes) then
             wtr.WriteLine()
             wtr.WriteLine("Existing notes:")
             for i = 0 to notes.Length - 1 do
-                wtr.WriteLine($"   {i+1}: %s{notes[i]}")
-        if not (isNullOrEmpty aa.NotesToAdd) then
+                wtr.WriteLine($"   {i+1}: {Note.toString notes[i]}")
+        if not (Array.isNullOrEmpty aa.NotesToAdd) then
             wtr.WriteLine()
             wtr.WriteLine("Notes to add:")
             for note in aa.NotesToAdd do
                 wtr.WriteLine($"   {note}")
-        if not (isNullOrEmpty aa.NotesToDelete) then
+        if not (Array.isNullOrEmpty aa.NotesToDelete) then
             wtr.WriteLine()
             wtr.WriteLine($"Notes to delete: %A{aa.NotesToDelete}")
 
@@ -287,30 +346,6 @@ module Program =
             | _ ->
                 Proceed
 
-    /// Updates the given note database.
-    let updateNotes aa (notes : _[]) =
-
-            // delete notes
-        let idxs =
-            if isNullOrEmpty aa.NotesToDelete then
-                Seq.empty
-            else
-                aa.NotesToDelete
-                    |> Seq.sortDescending
-                    |> Seq.map (fun id -> id - 1)
-        let notes =
-            (notes, idxs)
-                ||> Seq.fold (fun notes idx ->
-                    if idx >= 0 && idx < notes.Length then
-                        Array.removeAt idx notes
-                    else notes)
-
-            // add notes
-        if isNullOrEmpty aa.NotesToAdd then
-            notes
-        else
-            Array.append notes aa.NotesToAdd
-
     /// Runs the game from the given state.
     let rec run state prevActionOpt notes =
 
@@ -327,7 +362,7 @@ module Program =
 
                     // update game state and notes
                 let state = engine.Step state (toAction aa)
-                let notes = updateNotes aa notes
+                let notes = NoteDatabase.updateNotes aa notes
 
                     // play another turn?
                 if state.Over then return ()
