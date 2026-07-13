@@ -373,7 +373,6 @@ module Program =
 
     /// Runs the game from the given state.
     let rec run state prevActionOpt notes =
-
         async {
             try
                     // get agent's action
