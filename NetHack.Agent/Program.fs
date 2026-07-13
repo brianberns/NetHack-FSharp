@@ -145,7 +145,13 @@ module Program =
     /// Creates a prompt for the agent based on the current state.
     let getPrompt (state : GameState) prevActionOpt (notes : _[]) =
         String.concat "\n" [
-            "You are an expert NetHack player controlling a character."
+            "You are an expert NetHack player controlling a character. \
+            Your objective is to progress through the dungeon and grow \
+            stronger. Typically, you should explore each level to find \
+            useful items, preferring unexplored areas over places you've \
+            already been, then go on to the next level only after you've \
+            covered the current level. Make a plan that reflects this \
+            objective while also responding to challenges and threats."
             "The current game state (JSON):"
             Json.toJson state
             getGuidance state.Pending
