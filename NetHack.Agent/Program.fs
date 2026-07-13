@@ -85,43 +85,6 @@ module Note =
             Age = 0
         }
 
-type NoteDatabase = Note[]
-
-module NoteDatabase =
-
-    /// Updates the given note database.
-    let updateNotes aa (db : NoteDatabase) =
-
-            // delete notes
-        let idxs =
-            if Array.isNullOrEmpty aa.NotesToDelete then
-                Seq.empty
-            else
-                aa.NotesToDelete
-                    |> Seq.sortDescending
-                    |> Seq.map (fun id -> id - 1)
-        let db =
-            (db, idxs)
-                ||> Seq.fold (fun db idx ->
-                    if idx >= 0 && idx < db.Length then
-                        Array.removeAt idx db
-                    else db)
-
-            // increment note ages
-        let db =
-            Array.map (fun note ->
-                { note with Age = note.Age + 1}) db
-
-            // add new notes
-        if Array.isNullOrEmpty aa.NotesToAdd then
-            db
-        else
-            [|
-                yield! db
-                for text in aa.NotesToAdd do
-                    Note.create text
-            |]
-
 module Program =
 
     /// Provides guidance for responding to a prompt.
@@ -370,6 +333,49 @@ module Program =
 
             | _ ->
                 Proceed
+
+    /// Updates the given note database.
+    let updateNotes aa (notes : _[]) =
+
+            // delete notes
+        let notes =
+            let idxs =
+                if Array.isNullOrEmpty aa.NotesToDelete then
+                    Seq.empty
+                else
+                    aa.NotesToDelete
+                        |> Seq.sortDescending
+                        |> Seq.map (fun id -> id - 1)
+            (notes, idxs)
+                ||> Seq.fold (fun notes idx ->
+                    if idx >= 0 && idx < notes.Length then
+                        Array.removeAt idx notes
+                    else notes)
+
+            // update note ages
+        let notes =
+            let idxs =
+                if Array.isNullOrEmpty aa.NotesToDelete then
+                    Set.empty
+                else
+                    aa.RelevantNotes
+                        |> Seq.map (fun id -> id - 1)
+                        |> set
+            Array.mapi (fun idx note ->
+                { note with
+                    Age =
+                        if idxs.Contains(idx) then 0
+                        else note.Age + 1}) notes
+
+            // add new notes
+        if Array.isNullOrEmpty aa.NotesToAdd then
+            notes
+        else
+            [|
+                yield! notes
+                for text in aa.NotesToAdd do
+                    Note.create text
+            |]
 
     /// Runs the game from the given state.
     let rec run state prevActionOpt notes =
