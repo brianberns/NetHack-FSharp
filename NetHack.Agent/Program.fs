@@ -155,28 +155,38 @@ module Program =
             ""
             "# Current game state"
             "```json"
-            Json.toJson state
+            Json.toJson state.Observation
             "```"
 
             ""
-            "# Guidance"
+            "# Instructions"
+            "The game is currently waiting for:"
+            "```json"
+            Json.toJson state.Pending
+            "```json"
             getGuidance state.Pending
 
             match prevActionOpt with
                 | Some aa ->
                     ""
-                    "# Prediction vs. reality"
-                    $"The action you took on the last turn: {getActionDesc aa}"
+                    "# Adjust your plan if necessary"
+                    "The action you took on the last turn:"
+                    "```"
+                    getActionDesc aa
+                    "```"
                     "Your prediction from last turn of what the current \
                     game state should be:"
+                    "```"
                     aa.Prediction
-                    "Compare this prediction against reality to determine \
-                    if you need to adjust your plan."
+                    "```"
+                    "Compare this prediction against the actual game state \
+                    to determine if you need to try something different. \
+                    Pay attention to any messages you received."
                 | None -> ()
 
             if notes.Length > 0 then
                 ""
-                "#Your notes"
+                "# Your notes"
                 for i = 0 to notes.Length - 1 do
                     $"{i+1}. %s{notes[i].Text}"
 
