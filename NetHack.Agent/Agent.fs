@@ -87,6 +87,18 @@ module Gemini =
             TryParseWaitTime = tryParseWaitTime
         }
 
+module OpenAi =
+
+    let Gpt =
+        {
+            Name = "Gpt"
+            Id = "openai/gpt-4.1-mini"
+            ApiKeyName = "OpenRouter:ApiKey"
+            Endpoint = "https://openrouter.ai/api/v1"
+            SupportsJsonSchema = true
+            TryParseWaitTime = fun _ -> None
+        }
+
 /// Decision-making agent.
 type Agent =
     {
