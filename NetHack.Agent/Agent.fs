@@ -91,8 +91,8 @@ module OpenRouter =
 
     let model =
         {
-            Name = "Claude"
-            Id = "anthropic/claude-sonnet-5"
+            Name = "Gemini"
+            Id = "google/gemini-3.5-flash"
             ApiKeyName = "OpenRouter:ApiKey"
             Endpoint = "https://openrouter.ai/api/v1"
             SupportsJsonSchema = true
