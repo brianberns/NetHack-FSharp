@@ -172,9 +172,15 @@ module Program =
             "Take the opportunity to move diagonally when possible."
             "Prefer Run over Move when exploring. Use Move for precise \
             navigation."
-            "Rooms on the map are places you've already been. Don't \
-            re-explore these rooms. To find new rooms, follow corridors \
-            towards blank (unexplored) regions."
+            "To find new rooms, follow corridors towards blank \
+            (unexplored) regions. A corridor that looks like a dead end \
+            might continue further."
+            "The dungeon exists within a rectangle of the given width and \
+            height. There is nothing outside of this rectangle."
+            "When two entities occupy the same square, only the top one is \
+            shown on the map."
+            "An object on the ground obscures the floor/corridor symbol \
+            underneath it, but doesn’t block the way."
         ]
 
     let model = OpenRouter.model
