@@ -157,8 +157,8 @@ module Program =
             match prevActionOpt with
                 | Some aa ->
                     $"The action you took on the last turn: {getActionDesc aa}"
-                    "Your prediction from last turn of what the current game \
-                    state should be:"
+                    "Your prediction from last turn of what the current \
+                    game state should be:"
                     aa.Prediction
                     "Compare this prediction against reality to determine \
                     if you need to adjust your plan."
@@ -174,6 +174,9 @@ module Program =
             "Don't assume you've hit a dead end just because the path \
             ahead appears to stop. A blank square might just be \
             unexplored."
+            "Well-mapped rooms are usually ones that you've already \
+            explored, so look for unexplored rooms in the blank areas \
+            of the map."
         ]
 
     let model = Gemini.flash
