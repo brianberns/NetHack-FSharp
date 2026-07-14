@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NetHack.Agent": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "NETHACK_SHIM_TRACE": "shim-trace.log"
+      }
+    }
+  }
+}
