@@ -124,6 +124,7 @@ module Program =
 
     /// Expands any ASCII control characters in the given text.
     let expandCtrl (text : string) =
+        let text = if isNull text then "" else text
         String.concat "" [
             for c in text do
                 let value = int c
