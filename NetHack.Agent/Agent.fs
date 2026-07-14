@@ -89,10 +89,10 @@ module Gemini =
 
 module OpenRouter =
 
-    let tencent =
+    let model =
         {
-            Name = "Tencent"
-            Id = "tencent/hy3:free"
+            Name = "DeepSeek"
+            Id = "deepseek/deepseek-v4-flash"
             ApiKeyName = "OpenRouter:ApiKey"
             Endpoint = "https://openrouter.ai/api/v1"
             SupportsJsonSchema = true

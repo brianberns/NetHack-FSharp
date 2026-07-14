@@ -177,7 +177,7 @@ module Program =
             towards blank (unexplored) regions."
         ]
 
-    let model = Gemini.flash
+    let model = OpenRouter.model
 
     let agent =
         let config =
