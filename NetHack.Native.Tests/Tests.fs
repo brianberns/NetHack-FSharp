@@ -166,10 +166,34 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
         | other -> failwith $"expected the 'Do what with the chest?' menu, got {other}"
     Assert.Equal(Command, afterLoot.Pending)
 
+    // An invalid direction key must not fail silently. getdir() with cmdassist on
+    // (NetHack's default) reports "Invalid direction key!" plus the direction grid
+    // via help_dir/show_direction_keys -- putstr into a *text window* -- and only
+    // falls back to pline("What a strange direction!") when that window is NOT
+    // shown (cmd.c:4096). So the pline never fires, and before we captured menu/
+    // text putstr the caller saw nothing at all: the command aborted in silence.
+    let badDir =
+        let dirPrompt = engine.Step afterLoot (Extended "kick")
+        match dirPrompt.Pending with
+        | Direction _ -> engine.Step dirPrompt (Key 'w')  // 'w' is not a direction key
+        | other -> failwith $"expected a Direction prompt from #kick, got {other}"
+    // The reply is the cmdassist help window: "Invalid direction key!" followed by
+    // the y/k/u h/./l b/j/n grid -- which also spells out for the caller that 'n'
+    // is SOUTHEAST, not north, and that '.' targets yourself.
+    Assert.True(
+        badDir.Observation.Messages
+        |> List.exists (fun m -> m.Contains "Invalid direction key"),
+        $"an invalid direction key must be reported, but Messages were: \
+          %A{badDir.Observation.Messages}")
+    Assert.True(
+        badDir.Observation.Messages
+        |> List.exists (fun m -> m.Contains "Valid direction keys are"),
+        "the direction-key help grid should reach the caller too")
+
     // Pile flag: wish a second item and drop it, so the hero's tile now holds
     // two stacks; then step off and confirm the vacated square is reported as a
     // pile (top item named, Pile = true, rest hidden — fog-of-war-safe).
-    let wished2 = engine.Step (engine.Step afterLoot (Extended "wizwish")) (Text "ring of protection")
+    let wished2 = engine.Step (engine.Step badDir (Extended "wizwish")) (Text "ring of protection")
     let inv3 = engine.Step wished2 (Key 'i')
     let ringKey =
         match inv3.Pending with
