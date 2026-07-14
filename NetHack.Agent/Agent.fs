@@ -91,8 +91,8 @@ module OpenRouter =
 
     let model =
         {
-            Name = "DeepSeek"
-            Id = "deepseek/deepseek-v4-flash"
+            Name = "Claude"
+            Id = "anthropic/claude-sonnet-5"
             ApiKeyName = "OpenRouter:ApiKey"
             Endpoint = "https://openrouter.ai/api/v1"
             SupportsJsonSchema = true
