@@ -222,6 +222,28 @@ module Native =
     let private glyphEscape = Regex(@"\\G[0-9A-Fa-f]+", RegexOptions.Compiled)
     let private clean (s: string) = glyphEscape.Replace(s, "")
 
+    // Optional window-callback trace, to locate native crashes we can't reproduce.
+    // When the NETHACK_SHIM_TRACE env var names a file, each meaningful callback (and
+    // the command action fed to the engine) is appended there and flushed per line,
+    // so the file's tail survives a hard native crash -- an access violation kills
+    // the process, bypassing every managed handler, so anything unflushed is lost.
+    // Off unless the env var is set: then `trace` is a single None-check and costs
+    // nothing. Never throws; a trace failure must never perturb the game.
+    let private traceWriter : IO.TextWriter option =
+        match Environment.GetEnvironmentVariable "NETHACK_SHIM_TRACE" with
+        | null | "" -> None
+        | path ->
+            try
+                let w = new IO.StreamWriter(path, append = false)
+                w.AutoFlush <- true
+                Some(w :> IO.TextWriter)
+            with _ -> None
+
+    let private trace (line: string) =
+        match traceWriter with
+        | Some w -> (try w.WriteLine(line) with _ -> ())
+        | None -> ()
+
     let private emptyStatus : Status =
         { Title = ""; Alignment = ""; Strength = ""; Dexterity = 0; Constitution = 0
           Intelligence = 0; Wisdom = 0; Charisma = 0; HP = 0; HPMax = 0; Power = 0
@@ -502,6 +524,10 @@ module Native =
         member this.Dispatch(name: string, fmt: string, retPtr: nativeint, args: nativeint) =
             let writeInt (v: int) = if retPtr <> IntPtr.Zero then Marshal.WriteInt32(retPtr, v)
             let writeChar (c: char) = if retPtr <> IntPtr.Zero then Marshal.WriteByte(retPtr, byte c)
+            // Trace the callback (skip the per-cell floods that fire hundreds of
+            // times a turn). The tail of the trace file shows the last shim activity
+            // before a native crash.
+            if name <> "shim_print_glyph" && name <> "shim_curs" then trace name
             match name with
             | "shim_create_nhwindow" ->
                 let ty = int (argAt args 0)
@@ -602,9 +628,13 @@ module Native =
                 // the next queued key without asking the API thread again, so the
                 // whole "20s" or "Gl" reaches NetHack as one uninterrupted command.
                 if pendingKeys.Count > 0 then
-                    writeInt (pendingKeys.Dequeue())
+                    let k = pendingKeys.Dequeue()
+                    trace (sprintf "  fed queued key %d" k)
+                    writeInt k
                 else
-                    match this.KeysFor(this.Settle Command) with
+                    let action = this.Settle Command
+                    trace (sprintf "  cmd %A" action)
+                    match this.KeysFor action with
                     | first :: rest ->
                         for k in rest do pendingKeys.Enqueue k
                         writeInt first
