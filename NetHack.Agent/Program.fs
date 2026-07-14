@@ -30,18 +30,15 @@ type ActionKind =
 /// drives the model to think first and then act.
 type AgentAction =
     {
-        [<Description("Your notes from this turn. Each one will carry \
-        over to subsequent turns. Use these notes to record your plan \
-        and what you've learned.")>]
+        [<Description("Your notes from this turn. Use these to record \
+        your plan and what you've learned for future use.")>]
         NotesToAdd : string[]
 
         [<Description("IDs of notes to delete because they are now \
-        incorrect, irrelevant, or repetitive. Use this to keep your \
-        notes tidy because your memory and attention are limited.")>]
+        incorrect or obsolete.")>]
         NotesToDelete : int[]
 
-        [<Description("IDs of notes you found relevant, useful or \
-        informative on this turn.")>]
+        [<Description("IDs of notes that were relevant on this turn.")>]
         RelevantNotes : int[]
 
         [<Description("A sentence quantifying the expected result of \
@@ -402,7 +399,7 @@ module Program =
             else arr |> Seq.map (fun id -> id - 1) |> set
 
         let deleteIdxs = toIdxSet aa.NotesToDelete
-        let relevantIdxs = toIdxSet aa.RelevantNotes
+        let relevantIdxs = toIdxSet aa.NotesToKeep
 
         let kept =
             notes
