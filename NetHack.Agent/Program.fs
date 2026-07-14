@@ -145,6 +145,8 @@ module Program =
     /// Creates a prompt for the agent based on the current state.
     let getPrompt (state : GameState) prevActionOpt (notes : _[]) =
         String.concat "\n" [
+
+            "# Objective"
             "You are an expert NetHack player controlling a character. \
             Your objective is to progress through the dungeon and grow \
             stronger. Typically, you should explore each level to find \
@@ -152,11 +154,21 @@ module Program =
             already been, then go on to the next level only after you've \
             covered the current level. Make a plan that reflects this \
             objective while also responding to challenges and threats."
-            "The current game state (JSON):"
+
+            ""
+            "# Current game state"
+            "```json"
             Json.toJson state
+            "```"
+
+            ""
+            "# Guidance"
             getGuidance state.Pending
+
             match prevActionOpt with
                 | Some aa ->
+                    ""
+                    "# Prediction vs. reality"
                     $"The action you took on the last turn: {getActionDesc aa}"
                     "Your prediction from last turn of what the current \
                     game state should be:"
@@ -164,22 +176,26 @@ module Program =
                     "Compare this prediction against reality to determine \
                     if you need to adjust your plan."
                 | None -> ()
+
             if notes.Length > 0 then
-                $"Your notes:"
+                ""
+                "#Your notes"
                 for i = 0 to notes.Length - 1 do
-                    $"{i+1}: %s{notes[i].Text}"
-            "Some tips for navigating the dungeon:"
-            "Take the opportunity to move diagonally when possible."
-            "Prefer Run over Move when exploring. Use Move for precise \
+                    $"{i+1}. %s{notes[i].Text}"
+
+            ""
+            "# Dungeon navigation tips"
+            "* Take the opportunity to move diagonally when possible."
+            "* Prefer Run over Move when exploring. Use Move for precise \
             navigation."
-            "To find new rooms, follow corridors towards blank \
+            "* To find new rooms, follow corridors towards blank \
             (unexplored) regions. A corridor that looks like a dead end \
             might continue further."
-            "The dungeon exists within a rectangle of the given width and \
+            "* The dungeon exists within a rectangle of the given width and \
             height. There is nothing outside of this rectangle."
             "When two entities occupy the same square, only the top one is \
             shown on the map."
-            "An object on the ground obscures the floor/corridor symbol \
+            "* An object on the ground obscures the floor/corridor symbol \
             underneath it, but doesn’t block the way."
         ]
 
