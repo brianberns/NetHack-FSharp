@@ -149,6 +149,8 @@ module Native =
 
     let private NHW_MESSAGE = 1
     let private NHW_MAP = 3
+    let private NHW_MENU = 4
+    let private NHW_TEXT = 5
 
     let private BL_GOLD = 10
     let private BL_HP = 18
@@ -528,8 +530,15 @@ module Native =
                     heroX <- int (argAt args 1)
                     heroY <- int (argAt args 2)
             | "shim_putstr" ->
+                // Some listings are plain text lines written into a menu/text window
+                // rather than selectable add_menu rows, so they never surface as a
+                // Prompt.Menu: "Look inside" a container (container_contents) writes
+                // "Contents of the chest:" and one line per item this way. Capture
+                // those windows' text as messages too, else the engine computes the
+                // answer and we silently drop it.
                 let w = int (argAt args 0)
-                if (match winType.TryGetValue w with true, t -> t = NHW_MESSAGE | _ -> false) then
+                let ty = match winType.TryGetValue w with true, t -> t | _ -> 0
+                if ty = NHW_MESSAGE || ty = NHW_MENU || ty = NHW_TEXT then
                     let s = clean (strAt args 2)
                     if s <> "" then messages.Add s
             | "shim_raw_print" | "shim_raw_print_bold" ->

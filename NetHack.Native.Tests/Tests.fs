@@ -111,7 +111,8 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
 
     // Wish a chest, find its inventory letter, and drop it so the hero is
     // standing on it.
-    let wished = engine.Step (engine.Step afterCancel (Extended "wizwish")) (Text "chest")
+    // "unlocked" so #loot can open it below without a lock-picking detour.
+    let wished = engine.Step (engine.Step afterCancel (Extended "wizwish")) (Text "unlocked chest")
     let inv2 = engine.Step wished (Key 'i')
     let chestKey =
         match inv2.Pending with
@@ -135,10 +136,40 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
             e.Kind = GlyphKind.Object && (defaultArg e.Name "").Contains "chest"),
         "a chest under the hero should be reported in Entities")
 
+    // "Look inside" a container. NetHack renders that listing as plain text lines
+    // written into a menu window (container_contents), NOT as selectable add_menu
+    // rows, so it never arrives as a Prompt.Menu. Those lines must still reach
+    // Observation.Messages, else the engine computes the contents and we silently
+    // drop them (the caller asks what's in the chest and learns nothing).
+    let afterLoot =
+        let lootStart = engine.Step dropped (Extended "loot")
+        // Standing on the chest: "There is a chest here, loot it? [ynq]" comes first.
+        let lootMenu =
+            match lootStart.Pending with
+            | MultiChoice _ -> engine.Step lootStart (Answer 'y')
+            | _ -> lootStart
+        match lootMenu.Pending with
+        | Menu (_, _, its) ->
+            Assert.True(
+                its |> List.exists (fun it -> it.Key = ':'),
+                "the loot menu should offer ':' (look inside)")
+            let looked = engine.Step lootMenu (Choose [ ':' ])
+            Assert.True(
+                looked.Observation.Messages
+                |> List.exists (fun m -> m.Contains "Contents of"),
+                $"looking inside must report the contents, but Messages were: \
+                  %A{looked.Observation.Messages}")
+            // Leave the loot menu so the game is back at a command prompt.
+            match looked.Pending with
+            | Menu _ -> engine.Step looked (Choose [ 'q' ])
+            | _ -> looked
+        | other -> failwith $"expected the 'Do what with the chest?' menu, got {other}"
+    Assert.Equal(Command, afterLoot.Pending)
+
     // Pile flag: wish a second item and drop it, so the hero's tile now holds
     // two stacks; then step off and confirm the vacated square is reported as a
     // pile (top item named, Pile = true, rest hidden — fog-of-war-safe).
-    let wished2 = engine.Step (engine.Step dropped (Extended "wizwish")) (Text "ring of protection")
+    let wished2 = engine.Step (engine.Step afterLoot (Extended "wizwish")) (Text "ring of protection")
     let inv3 = engine.Step wished2 (Key 'i')
     let ringKey =
         match inv3.Pending with
