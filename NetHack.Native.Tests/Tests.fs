@@ -52,6 +52,16 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     Assert.NotEmpty start.Observation.Legend
     Assert.False start.Over
 
+    // Every entity at spawn sits in the hero's current sight — nothing is
+    // remembered-but-unseen on the first turn. There is at least one non-hero
+    // entity (the Valkyrie's starting pet), so this flag flows through the real
+    // cansee() query, not just the hero's hardcoded value. The InView=false
+    // (remembered) path is reached in live play once a square is left behind.
+    Assert.True(
+        start.Observation.Entities |> List.exists (fun e -> e.Kind <> HeroSelf),
+        "the seeded start has a non-hero entity (the pet) to exercise cansee")
+    Assert.All(start.Observation.Entities, fun e -> Assert.True e.InView)
+
     // Walls render as box-drawing (the glyph->char remap), so '+' is reserved
     // for a closed door and never masquerades as a room corner. Every room has
     // walls, so the legend maps at least one box char to "wall" and maps '+' to

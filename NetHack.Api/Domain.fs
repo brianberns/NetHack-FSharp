@@ -37,6 +37,12 @@ type Entity = {
     Color  : string           // NetHack's 16-colour name, e.g. "red", "cyan"
     Pile   : bool             // Object only: this square holds more than one item
                               // (the top one is named; the rest stay hidden until visited)
+    InView : bool             // true when the hero can see this square right now, so
+                              // what is here is live; false when it is out of current
+                              // sight and only recalled from an earlier visit, so it
+                              // may have moved or gone (an object picked up, a monster
+                              // wandered off). This is line-of-sight / fog-of-war, NOT
+                              // monster invisibility.
 }
 
 /// Hunger state, mirroring NetHack's hunger levels.

@@ -66,6 +66,11 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern int private nhglue_is_pile_at(int x, int y)
 
+    // 1 when map cell (x,y) is currently in the hero's sight (the UI draws it
+    // bright), 0 when only remembered from an earlier visit (drawn dimmed).
+    [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
+    extern int private nhglue_cansee(int x, int y)
+
     // Report the hero's role / race / gender into three buffers.
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)>]
     extern void private nhglue_hero_ident(
@@ -420,7 +425,8 @@ module Native =
             let hero = { X = heroX; Y = heroY }
             let entities = ResizeArray<Entity>()
             entities.Add { Pos = hero; Symbol = '@'; Kind = HeroSelf
-                           Name = Some "you"; Color = "white"; Pile = false }
+                           Name = Some "you"; Color = "white"; Pile = false
+                           InView = true }
             // Decode monsters / objects / traps at each drawn cell into named
             // entities (features/terrain stay in the ASCII map).
             let sb = System.Text.StringBuilder(96)
@@ -439,7 +445,8 @@ module Native =
                                 { Pos = { X = x; Y = y }; Symbol = glyphs[y, x]
                                   Kind = kind; Name = Some(sb.ToString())
                                   Color = cellColor[y, x]
-                                  Pile = (nhglue_is_pile_at(x, y) <> 0) }
+                                  Pile = (nhglue_is_pile_at(x, y) <> 0)
+                                  InView = (nhglue_cansee(x, y) <> 0) }
             // Objects on the hero's own tile are hidden by the '@' glyph (and skipped
             // above), so read them from the object chain and report them explicitly —
             // otherwise a caller can't tell it is standing on, e.g., a chest.
@@ -452,7 +459,8 @@ module Native =
                 | ch ->
                     entities.Add
                         { Pos = hero; Symbol = char ch; Kind = GlyphKind.Object
-                          Name = Some(sb.ToString()); Color = "gray"; Pile = false }
+                          Name = Some(sb.ToString()); Color = "gray"; Pile = false
+                          InView = true }
                     oi <- oi + 1
             // The hero's pack, read from the invent chain — what a free 'i' shows,
             // so getobj prompts (wear/wield/eat/...) that only offer letters can

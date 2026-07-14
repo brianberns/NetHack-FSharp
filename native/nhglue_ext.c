@@ -27,6 +27,22 @@ copy_name(char *buf, int buflen, const char *name)
 }
 
 /*
+ * Is map cell (x,y) currently within the hero's sight, as opposed to only
+ * remembered from an earlier visit? This is the same IN_SIGHT bit the tty/tiles
+ * UI reads to draw a cell bright rather than dimmed. Returns 1 when visible now,
+ * 0 when merely remembered (or out of bounds).
+ */
+int nhglue_cansee(int x, int y);
+
+int
+nhglue_cansee(int x, int y)
+{
+    if (x < 1 || x >= COLNO || y < 0 || y >= ROWNO)
+        return 0;
+    return cansee(x, y) ? 1 : 0;
+}
+
+/*
  * Describe what is remembered at map cell (x,y). Returns a category:
  *   0 skip (terrain/features stay in the ASCII map), 1 monster, 2 pet,
  *   3 object, 4 trap. On a nonzero return, buf receives the concise name
