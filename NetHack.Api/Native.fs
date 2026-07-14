@@ -585,11 +585,16 @@ module Native =
             | "shim_end_menu" -> menuTitle <- strAt args 1
             // ---- input requests: settle points ----
             | "shim_nhgetch" | "shim_nh_poskey" ->
-                // nh_poskey has out params (x,y,mod); leave them zero.
+                // nh_poskey has out params (x,y,mod); leave them zero. x and y are
+                // coordxy* (int16_t), mod is int* -- match each width exactly. A
+                // WriteInt32 into a 2-byte coordxy overruns it and corrupts whatever
+                // sits next on the game thread's stack.
                 if name = "shim_nh_poskey" then
-                    for i in 0 .. 2 do
-                        let p = nativeint (argAt args i)
-                        if p <> IntPtr.Zero then Marshal.WriteInt32(p, 0)
+                    let px, py, pmod =
+                        nativeint (argAt args 0), nativeint (argAt args 1), nativeint (argAt args 2)
+                    if px <> IntPtr.Zero then Marshal.WriteInt16(px, 0s)
+                    if py <> IntPtr.Zero then Marshal.WriteInt16(py, 0s)
+                    if pmod <> IntPtr.Zero then Marshal.WriteInt32(pmod, 0)
                 if initializing then
                     // first command request => hand control to the caller
                     initializing <- false

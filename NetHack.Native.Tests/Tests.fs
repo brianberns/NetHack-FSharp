@@ -265,3 +265,17 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     // Still responsive afterwards: the engine keeps stepping normally.
     let afterOverlong2 = engine.Step afterOverlong (Key 'i')
     Assert.False(afterOverlong2.Over)
+
+    // nh_poskey is the only callback that writes coordxy* out-params (x,y). Its x/y
+    // are int16_t and mod is int; a uniform 4-byte write overran the two coordxy
+    // slots and corrupted the game thread's stack. Drive the getpos path that calls
+    // it -- farlook (';') -- and require the game to survive the round-trip and keep
+    // stepping. (Exercises the fixed write site; the corruption it prevents would
+    // otherwise surface later as a fatal CLR error, as with the getlin overflow.)
+    let afterFarlook =
+        let dismissed = engine.Step afterOverlong2 Proceed  // close the inventory menu
+        let looking = engine.Step dismissed (Key ';')       // farlook -> getpos -> nh_poskey
+        engine.Step looking Cancel                           // ESC out of getpos
+    Assert.False(afterFarlook.Over)
+    Assert.Equal(21, List.length afterFarlook.Observation.Rows)
+    Assert.All(afterFarlook.Observation.Rows, fun row -> Assert.Equal(80, row.Length))
