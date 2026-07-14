@@ -171,12 +171,11 @@ module Program =
             "Take the opportunity to move diagonally when possible."
             "Prefer Run over Move when exploring. Use Move for precise \
             navigation."
+            "The map shows you places you've already been. Don't \
+            re-explore these areas."
             "Don't assume you've hit a dead end just because the path \
             ahead appears to stop. A blank square might just be \
             unexplored."
-            "Well-mapped rooms are usually ones that you've already \
-            explored, so look for unexplored rooms in the blank areas \
-            of the map."
         ]
 
     let model = Gemini.flash
