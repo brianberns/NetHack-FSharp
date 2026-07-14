@@ -89,10 +89,22 @@ module Gemini =
 
 module OpenAi =
 
-    let Gpt =
+    let gpt =
         {
             Name = "Gpt"
             Id = "openai/gpt-4.1-mini"
+            ApiKeyName = "OpenRouter:ApiKey"
+            Endpoint = "https://openrouter.ai/api/v1"
+            SupportsJsonSchema = true
+            TryParseWaitTime = fun _ -> None
+        }
+
+module Alibaba =
+
+    let qwen =
+        {
+            Name = "Qwen"
+            Id = "qwen/qwen3.7-plus"
             ApiKeyName = "OpenRouter:ApiKey"
             Endpoint = "https://openrouter.ai/api/v1"
             SupportsJsonSchema = true
