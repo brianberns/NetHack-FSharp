@@ -163,7 +163,7 @@ module Program =
             "The game is currently waiting for:"
             "```json"
             Json.toJson state.Pending
-            "```json"
+            "```"
             getGuidance state.Pending
 
             match prevActionOpt with
