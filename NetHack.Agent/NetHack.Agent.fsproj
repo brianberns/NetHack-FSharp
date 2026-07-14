@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Compile Include="Agent.fs" />
+    <Compile Include="Prompt.fs" />
+    <Compile Include="View.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
