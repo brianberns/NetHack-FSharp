@@ -399,7 +399,7 @@ module Program =
             else arr |> Seq.map (fun id -> id - 1) |> set
 
         let deleteIdxs = toIdxSet aa.NotesToDelete
-        let relevantIdxs = toIdxSet aa.NotesToKeep
+        let relevantIdxs = toIdxSet aa.RelevantNotes
 
         let kept =
             notes
