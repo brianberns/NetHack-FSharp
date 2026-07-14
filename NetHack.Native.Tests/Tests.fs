@@ -245,3 +245,23 @@ let ``seeded wizard game is deterministic, well-formed, and reports objects unde
     let ran = engine.Step rested (Run West)
     Assert.Equal(Command, ran.Pending)
     Assert.Equal(21, List.length ran.Observation.Rows)
+
+    // getlin hands the window port a fixed char[BUFSZ] (256) owned by the game
+    // thread -- usually on its stack. The reply, though, is caller-supplied and
+    // unbounded: an LLM will happily emit a long string for a wish, an engraving,
+    // or #name. It must be truncated to fit, never copied past the end; overflowing
+    // that buffer smashes the game thread's stack, and the process then dies later
+    // at some unrelated spot with a fatal CLR error. Feed a reply several times the
+    // buffer size and require the game to survive it intact.
+    let overlong = String('a', 256 * 3)
+    let afterOverlong =
+        let wishPrompt = engine.Step ran (Extended "wizwish")
+        match wishPrompt.Pending with
+        | TextLine _ -> engine.Step wishPrompt (Text overlong)
+        | other -> failwith $"expected a wish TextLine prompt, got {other}"
+    Assert.False(afterOverlong.Over)
+    Assert.Equal(21, List.length afterOverlong.Observation.Rows)
+    Assert.All(afterOverlong.Observation.Rows, fun row -> Assert.Equal(80, row.Length))
+    // Still responsive afterwards: the engine keeps stepping normally.
+    let afterOverlong2 = engine.Step afterOverlong (Key 'i')
+    Assert.False(afterOverlong2.Over)

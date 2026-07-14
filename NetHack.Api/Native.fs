@@ -165,6 +165,11 @@ module Native =
     let private COLNO = 80
     let private ROWNO = 21
 
+    // global.h: "#define BUFSZ 256 /* for getlin buffers */". getlin's bufp points
+    // at a caller-owned char[BUFSZ] (usually on the game thread's stack), so a reply
+    // must fit in BUFSZ-1 bytes plus a NUL.
+    let private BUFSZ = 256
+
     /// One step must settle (or end) within this budget, else it is reported as
     /// a fault rather than hanging the caller forever.
     [<Literal>]
@@ -627,10 +632,16 @@ module Native =
                 let reply =
                     if initializing then ""
                     else match this.Settle(TextLine(strAt args 0)) with Text s -> s | _ -> "\027"
+                // The reply is caller/model supplied and unbounded, but bufp is a
+                // fixed char[BUFSZ] owned by the game thread (often on its stack).
+                // Truncate to fit, leaving room for the NUL: copying past the end
+                // smashes that stack, and the damage only surfaces later as an
+                // unrelated fatal CLR error far from here.
                 let bytes = Text.Encoding.ASCII.GetBytes(reply)
+                let n = min bytes.Length (BUFSZ - 1)
                 if buf <> IntPtr.Zero then
-                    Marshal.Copy(bytes, 0, buf, bytes.Length)
-                    Marshal.WriteByte(buf, bytes.Length, 0uy)
+                    Marshal.Copy(bytes, 0, buf, n)
+                    Marshal.WriteByte(buf, n, 0uy)
             | "shim_select_menu" ->
                 let how = int (argAt args 1)
                 let outp = nativeint (argAt args 2)
