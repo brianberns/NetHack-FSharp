@@ -128,28 +128,51 @@ module Prompt =
             objective while also responding to challenges and threats."
         ]
 
+    let private toTable headerA headerB pairs =
+        [
+            $"| {headerA} | {headerB} "
+            "|--|--|"
+            for (a, b) in pairs do
+                $"| {a} | {b} |"
+        ]
+
+    /// Creates the "Dungeon map" portion of the prompt.
     let private getDungeonMap (observation : Observation) =
         [
             ""
             "# Dungeon map"
 
-            $"Size: {observation.Width} x {observation.Height}"
+            $"The dungeon exists within a {observation.Width}x{observation.Height} \
+            rectangle:"
             "```"
             for row in observation.Rows do
                 row
             "```"
 
-            "Legend:"
-            "| Symbol | Name |"
-            "|--|--|"
-            for (symbol, name) in Map.toSeq observation.Legend do
-                $"| {symbol} | {name} |"
+            "## Legend:"
+            yield! toTable "Symbol" "Name"
+                (Map.toSeq observation.Legend)
+        ]
+
+    let private toLocation x y =
+        $"({x}, {y})"
+
+    let private getHero (observation : Observation) =
+        [
+            ""
+            "# Hero"
+
+            $"* Location: {toLocation observation.Hero.X observation.Hero.Y}"
+            $"* Role: {observation.Character.Role}"
+            $"* Race: {observation.Character.Race}"
+            $"* Gender: {observation.Character.Gender}"
         ]
 
     /// Gets the "Game state" portion of a prompt.
     let private getState observation =
         [
             yield! getDungeonMap observation
+            yield! getHero observation
 
             ""
             "# Current game state"
@@ -271,9 +294,7 @@ module Prompt =
             "* To find new rooms, follow corridors towards blank \
             (unexplored) regions. A corridor that looks like a dead end \
             might continue further."
-            "* The dungeon exists within a rectangle of the given width and \
-            height. There is nothing outside of this rectangle."
-            "When two entities occupy the same square, only the top one is \
+            "* When two entities occupy the same square, only the top one is \
             shown on the map."
             "* An object on the ground obscures the floor/corridor symbol \
             underneath it, but doesn’t block the way."
