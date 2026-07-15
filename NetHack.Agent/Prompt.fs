@@ -118,6 +118,7 @@ module Prompt =
     let private objective =
         [
             "# Objective"
+
             "You are an expert NetHack player controlling a character. \
             Your objective is to progress through the dungeon and grow \
             stronger. Typically, you should explore each level to find \
@@ -207,20 +208,25 @@ module Prompt =
         [
             match aaOpt with
                 | Some aa ->
+
                     ""
                     "# Adjust your plan if necessary"
+
                     "The action you took on the last turn:"
                     "```"
                     getActionDesc aa
                     "```"
+
                     "Your prediction from last turn of what the current \
                     game state should be:"
                     "```"
                     aa.Prediction
                     "```"
+
                     "Compare this prediction against the actual game state \
                     to determine if you need to try something different. \
                     Pay attention to any messages you received."
+
                 | None -> ()
         ]
 
@@ -239,6 +245,7 @@ module Prompt =
         [
             ""
             "# Dungeon navigation tips"
+
             "* Take the opportunity to move diagonally when possible."
             "* Prefer Run over Move when exploring. Use Move for precise \
             navigation."
