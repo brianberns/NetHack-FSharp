@@ -114,38 +114,73 @@ module Note =
 
 module Prompt =
 
-    /// Provides guidance for responding to a prompt.
-    let private getGuidance = function
-        | Direction _ ->
-            "Specify a direction via Kind=Move, or Kind=Cancel to \
-            back out."
-        | MultiChoice(_, choices, _) ->
-            let desc =
-                if choices = "" then "one of the characters offered"
-                else $"one character from '{choices}'"
-            $"Reply Kind=Answer with Value set to {desc}, or Kind=Cancel \
-            to back out."
-        | Quantity _ ->
-            "Specify a quantity via Kind=Number, or Kind=Cancel to \
-            back out."
-        | TextLine _ ->
-            "Reply Kind=Text, or Kind=Cancel to back out."
-        | Menu(_, PickNone, _) ->
-            "Reply Kind=Proceed to dismiss the menu."
-        | Menu _ ->
-            "Reply Kind=Select with the item letters, or Kind=Cancel to \
-            cancel."
-        | More ->
-            "Reply Kind=Proceed to continue."
-        | Command ->
-            "Reply with a command. To move, use Kind=Run (move multiple \
-            steps at once) or Kind=Move (move only one step). For a named \
-            action, such as kick, loot, pray, apply, force, or dip, use \
-            Kind=Extended with the command name. Use Kind=Key only for a \
-            simple command, such as 's' (search), ',' (pick up), or 'i' \
-            (inventory), optionally with Count to repeat."
-        | GameOver _ ->
-            "The game is over."
+    /// "Objective" portion of a prompt.
+    let private objective =
+        [
+            "# Objective"
+            "You are an expert NetHack player controlling a character. \
+            Your objective is to progress through the dungeon and grow \
+            stronger. Typically, you should explore each level to find \
+            useful items, preferring unexplored areas over places you've \
+            already been, then go on to the next level only after you've \
+            covered the current level. Make a plan that reflects this \
+            objective while also responding to challenges and threats."
+        ]
+
+    /// Gets the "Game state" portion of a prompt.
+    let private getState (observation : Observation) =
+        [
+            ""
+            "# Current game state"
+
+            "```json"
+            Json.toJson observation
+            "```"
+        ]
+
+    /// Creates the "Instructions" portion of a prompt.
+    let private getInstructions pending =
+        [
+            ""
+            "# Instructions"
+
+            "The game is currently waiting for:"
+            "```json"
+            Json.toJson pending
+            "```"
+
+            match pending with
+                | Direction _ ->
+                    "Specify a direction via Kind=Move, or Kind=Cancel to \
+                    back out."
+                | MultiChoice(_, choices, _) ->
+                    let desc =
+                        if choices = "" then "one of the characters offered"
+                        else $"one character from '{choices}'"
+                    $"Reply Kind=Answer with Value set to {desc}, or Kind=Cancel \
+                    to back out."
+                | Quantity _ ->
+                    "Specify a quantity via Kind=Number, or Kind=Cancel to \
+                    back out."
+                | TextLine _ ->
+                    "Reply Kind=Text, or Kind=Cancel to back out."
+                | Menu(_, PickNone, _) ->
+                    "Reply Kind=Proceed to dismiss the menu."
+                | Menu _ ->
+                    "Reply Kind=Select with the item letters, or Kind=Cancel to \
+                    cancel."
+                | More ->
+                    "Reply Kind=Proceed to continue."
+                | Command ->
+                    "Reply with a command. To move, use Kind=Run (move multiple \
+                    steps at once) or Kind=Move (move only one step). For a named \
+                    action, such as kick, loot, pray, apply, force, or dip, use \
+                    Kind=Extended with the command name. Use Kind=Key only for a \
+                    simple command, such as 's' (search), ',' (pick up), or 'i' \
+                    (inventory), optionally with Count to repeat."
+                | GameOver _ ->
+                    "The game is over."
+        ]
 
     /// Expands any ASCII control characters in the given text.
     let private expandCtrl (text : string) =
@@ -167,34 +202,10 @@ module Prompt =
         else
             $"{aa.Kind} {expandCtrl aa.Value} ({aa.Count})"
 
-    /// Creates a prompt for the agent based on the current state.
-    let getPrompt (state : GameState) prevActionOpt (notes : _[]) =
-        String.concat "\n" [
-
-            "# Objective"
-            "You are an expert NetHack player controlling a character. \
-            Your objective is to progress through the dungeon and grow \
-            stronger. Typically, you should explore each level to find \
-            useful items, preferring unexplored areas over places you've \
-            already been, then go on to the next level only after you've \
-            covered the current level. Make a plan that reflects this \
-            objective while also responding to challenges and threats."
-
-            ""
-            "# Current game state"
-            "```json"
-            Json.toJson state.Observation
-            "```"
-
-            ""
-            "# Instructions"
-            "The game is currently waiting for:"
-            "```json"
-            Json.toJson state.Pending
-            "```"
-            getGuidance state.Pending
-
-            match prevActionOpt with
+    /// Creates the "Prediction" portion of a prompt.
+    let private getPrediction aaOpt =
+        [
+            match aaOpt with
                 | Some aa ->
                     ""
                     "# Adjust your plan if necessary"
@@ -211,13 +222,21 @@ module Prompt =
                     to determine if you need to try something different. \
                     Pay attention to any messages you received."
                 | None -> ()
+        ]
 
+    /// Creates the "Notes" portion of a prompt.
+    let private getNotes (notes : _[]) =
+        [
             if notes.Length > 0 then
                 ""
                 "# Your notes"
                 for i = 0 to notes.Length - 1 do
                     $"{i+1}. %s{notes[i].Text}"
+        ]
 
+    /// The "Tips" portion of a prompt.
+    let private tips =
+        [
             ""
             "# Dungeon navigation tips"
             "* Take the opportunity to move diagonally when possible."
@@ -232,4 +251,15 @@ module Prompt =
             shown on the map."
             "* An object on the ground obscures the floor/corridor symbol \
             underneath it, but doesn’t block the way."
+        ]
+
+    /// Creates a prompt for the agent based on the current state.
+    let getPrompt (state : GameState) prevActionOpt (notes : _[]) =
+        String.concat "\n" [
+            yield! objective
+            yield! getState state.Observation
+            yield! getInstructions state.Pending
+            yield! getPrediction prevActionOpt
+            yield! getNotes notes
+            yield! tips
         ]
