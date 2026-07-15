@@ -223,6 +223,17 @@ module Prompt =
                 $"| {item.Letter} | {item.Text} |"
         ]
 
+    /// Creates the "Messages" portion of a prompt.
+    let private getMessages (messages : List<string>) =
+        [
+            if not (List.isEmpty messages) then
+                ""
+                "# Messages"
+                "```"
+                yield! messages
+                "```"
+        ]
+
     /// Creates the "Game state" portion of a prompt.
     let private getState observation =
         [
@@ -230,12 +241,7 @@ module Prompt =
             yield! getHeroStatus observation
             yield! getEntities observation.Entities
             yield! getInventory observation.Inventory
-
-            ""
-            "# Current game state"
-            "```json"
-            Json.toJson observation
-            "```"
+            yield! getMessages observation.Messages
         ]
 
     /// Creates the "Instructions" portion of a prompt.
