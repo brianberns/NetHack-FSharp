@@ -128,12 +128,31 @@ module Prompt =
             objective while also responding to challenges and threats."
         ]
 
-    /// Gets the "Game state" portion of a prompt.
-    let private getState (observation : Observation) =
+    let private getDungeonMap (observation : Observation) =
         [
             ""
-            "# Current game state"
+            "# Dungeon map"
 
+            $"Size: {observation.Width} x {observation.Height}"
+            "```"
+            for row in observation.Rows do
+                row
+            "```"
+
+            "Legend:"
+            "| Symbol | Name |"
+            "|--|--|"
+            for (symbol, name) in Map.toSeq observation.Legend do
+                $"| {symbol} | {name} |"
+        ]
+
+    /// Gets the "Game state" portion of a prompt.
+    let private getState observation =
+        [
+            yield! getDungeonMap observation
+
+            ""
+            "# Current game state"
             "```json"
             Json.toJson observation
             "```"
