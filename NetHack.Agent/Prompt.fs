@@ -63,22 +63,32 @@ type AgentAction =
         Count : int
     }
 
+    /// Notes added this turn.
+    [<JsonIgnore>]
     member this.NotesToAdd =
         if isNull this._NotesToAdd then Array.empty
         else this._NotesToAdd
 
+    /// Notes deleted this turn.
+    [<JsonIgnore>]
     member this.NotesToDelete =
         if isNull this._NotesToDelete then Array.empty
         else this._NotesToDelete
 
+    /// Notes deemed relevant this turn.
+    [<JsonIgnore>]
     member this.RelevantNotes =
         if isNull this._RelevantNotes then Array.empty
         else this._RelevantNotes
 
+    /// This turn's prediction.
+    [<JsonIgnore>]
     member this.Prediction =
         if isNull this._Prediction then ""
         else this._Prediction
 
+    /// This turn's value.
+    [<JsonIgnore>]
     member this.Value =
         if isNull this._Value then ""
         else this._Value
