@@ -152,16 +152,45 @@ module Prompt =
         member pos.String =
             $"({pos.X}, {pos.Y})"
 
-    /// Creates the "Hero" portion of a prompt.
-    let private getHero (observation : Observation) =
+    /// Creates the "Hero status" portion of a prompt.
+    let private getHeroStatus (observation : Observation) =
         [
             ""
-            "# Hero"
+            "# Hero status"
 
             $"* Location: {observation.Hero.String}"
             $"* Role: {observation.Character.Role}"
             $"* Race: {observation.Character.Race}"
             $"* Gender: {observation.Character.Gender}"
+
+            let status = observation.Status
+            $"* Title: {status.Title}"
+            $"* Alignment: {status.Alignment}"
+            $"* Strength: {status.Strength}"
+            $"* Dexterity: {status.Dexterity}"
+            $"* Constitution {status.Constitution}"
+            $"* Intelligence: {status.Intelligence}"
+            $"* Wisdom: {status.Wisdom}"
+            $"* Charisma: {status.Charisma}"
+            $"* Hit points: {status.HP}/{status.HPMax}"
+            $"* Power: {status.Power}/{status.PowerMax}"
+            $"* Armor class: {status.ArmorClass}"
+            $"* Experience level: {status.ExpLevel}"
+            match status.Experience with
+                | Some exp -> $"* Experience: {exp}"
+                | None -> ()
+            $"* Gold: ${status.Gold}"
+            if status.Dungeon = "" then ()
+            else $"* Dungeon: {status.Dungeon}"
+            $"* Dungeon level: {status.DungeonLevel}"
+            $"* Depth: {status.Depth}"
+            $"* Hunger: {status.Hunger}"
+            for cond in status.Conditions do
+                $"* Condition: {cond}"
+            $"* Turns: {status.Turns}"
+            match status.Score with
+                | Some score -> $"* Score: {score}"
+                | None -> ()
         ]
 
     /// Creates the "Entities" portion of a prompt.
@@ -183,24 +212,11 @@ module Prompt =
             only the top one is shown on the map and listed here."
         ]
 
-        (*
-      "pos": {
-        "x": 68,
-        "y": 3
-      },
-      "symbol": ")",
-      "kind": "Object",
-      "name": "a curved sword",
-      "color": "black",
-      "pile": false,
-      "inView": true
-      *)
-
     /// Gets the "Game state" portion of a prompt.
     let private getState observation =
         [
             yield! getDungeonMap observation
-            yield! getHero observation
+            yield! getHeroStatus observation
             yield! getEntities observation.Entities
 
             ""
