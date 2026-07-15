@@ -55,11 +55,16 @@ module View =
             Ch:{status.Charisma} \
             {status.Alignment}")
         wtr.WriteLine($"Dlvl:{status.DungeonLevel} \
+            Pos:{state.Observation.Hero.String} \
             $:{status.Gold} \
             HP:{status.HP}/{status.HPMax} \
             Pw:{status.Power}/{status.PowerMax} \
             AC:{status.ArmorClass} \
-            T:{status.Turns}")
+            Xp:{status.ExpLevel} \
+            T:{status.Turns} \
+            {status.Hunger}")
+        for cond in status.Conditions do
+            wtr.WriteLine(cond)
 
             // what the game is waiting for
         wtr.WriteLine()

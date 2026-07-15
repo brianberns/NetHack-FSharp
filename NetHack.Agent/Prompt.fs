@@ -112,6 +112,13 @@ module Note =
             Age = 0
         }
 
+[<AutoOpen>]
+module ApiExt =
+
+    type Pos with
+        member pos.String =
+            $"({pos.X},{pos.Y})"
+
 module Prompt =
 
     /// "Objective" portion of a prompt.
@@ -147,10 +154,6 @@ module Prompt =
             for (symbol, name) in Map.toSeq observation.Legend do
                 $"| {symbol} | {name} |"
         ]
-
-    type private Pos with
-        member pos.String =
-            $"({pos.X}, {pos.Y})"
 
     /// Creates the "Hero status" portion of a prompt.
     let private getHeroStatus (observation : Observation) =
