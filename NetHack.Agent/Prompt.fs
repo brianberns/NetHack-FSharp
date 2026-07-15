@@ -212,12 +212,24 @@ module Prompt =
             only the top one is shown on the map and listed here."
         ]
 
-    /// Gets the "Game state" portion of a prompt.
+    /// Creates the "Inventory" portion of a prompt.
+    let private getInventory items =
+        [
+            ""
+            "# Inventory"
+            "| Letter | Description |"
+            "|--|--|"
+            for (item : InventoryItem) in items do
+                $"| {item.Letter} | {item.Text} |"
+        ]
+
+    /// Creates the "Game state" portion of a prompt.
     let private getState observation =
         [
             yield! getDungeonMap observation
             yield! getHeroStatus observation
             yield! getEntities observation.Entities
+            yield! getInventory observation.Inventory
 
             ""
             "# Current game state"
