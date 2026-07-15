@@ -257,33 +257,35 @@ module Prompt =
 
             match pending with
                 | Direction _ ->
-                    "Specify a direction via Kind=Move, or Kind=Cancel to \
+                    "Specify a direction via Kind=Move or use Kind=Cancel to \
                     back out."
                 | MultiChoice(_, choices, _) ->
                     let desc =
                         if choices = "" then "one of the characters offered"
                         else $"one character from '{choices}'"
-                    $"Reply Kind=Answer with Value set to {desc}, or Kind=Cancel \
-                    to back out."
+                    $"Reply Kind=Answer with Value set to {desc} or use \
+                    Kind=Cancel to back out."
                 | Quantity _ ->
-                    "Specify a quantity via Kind=Number, or Kind=Cancel to \
+                    "Specify a quantity via Kind=Number or use Kind=Cancel to \
                     back out."
                 | TextLine _ ->
-                    "Reply Kind=Text, or Kind=Cancel to back out."
+                    "Reply Kind=Text or use Kind=Cancel to back out."
                 | Menu(_, PickNone, _) ->
                     "Reply Kind=Proceed to dismiss the menu."
                 | Menu _ ->
-                    "Reply Kind=Select with the item letters, or Kind=Cancel to \
-                    cancel."
+                    "Reply Kind=Select with the item letters or use Kind=Cancel \
+                    to cancel."
                 | More ->
                     "Reply Kind=Proceed to continue."
                 | Command ->
-                    "Reply with a command. To move, use Kind=Run (move multiple \
-                    steps at once) or Kind=Move (move only one step). For a named \
-                    action, such as kick, loot, pray, apply, force, or dip, use \
-                    Kind=Extended with the command name. Use Kind=Key only for a \
-                    simple command, such as 's' (search), ',' (pick up), or 'i' \
-                    (inventory), optionally with Count to repeat."
+                    "Reply with a command."
+                    "To move, use Kind=Run (move multiple steps at once) or \
+                    Kind=Move (move only one step)."
+                    "For a named action, such as kick, loot, pray, apply, \
+                    force, or dip, use Kind=Extended with the command name."
+                    "Use Kind=Key only for a simple command, such as 's' \
+                    (search) or ',' (pick up), optionally with Count to \
+                    repeat."
                 | GameOver _ ->
                     "The game is over."
         ]
