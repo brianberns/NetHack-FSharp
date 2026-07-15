@@ -356,7 +356,9 @@ module Prompt =
             ""
             "# Dungeon navigation tips"
 
-            "* Take the opportunity to move diagonally when possible."
+            "* Take the opportunity to move diagonally when possible. \
+            However, note that you can't move diagonally into or out of \
+            an intact doorway."
             "* Prefer Run over Move when exploring. Use Move for precise \
             navigation."
             "* To find new rooms, follow corridors towards blank \

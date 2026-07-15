@@ -11,7 +11,7 @@ open NetHack.Api
 
 module Program =
 
-    let model = OpenRouter.model
+    let model = Gemini.flash
 
     let agent =
         let config =
