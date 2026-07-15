@@ -5,20 +5,19 @@ open System.Text.Json.Serialization
 
 open NetHack.Api
 
-/// The kinds of action the model may choose. As a string enum this schematizes
-/// to a constrained set the structured-output layer enforces exactly.
+/// The types of action the model may choose.
 [<JsonConverter(typeof<JsonStringEnumConverter>)>]
-type ActionKind =
-    | Move = 0
-    | Key = 1
-    | Answer = 2
-    | Text = 3
-    | Number = 4
-    | Select = 5
-    | Proceed = 6
-    | Extended = 7
-    | Cancel = 8
-    | Run = 9
+type ActionType =
+    | Run = 0
+    | Move = 1
+    | Key = 2
+    | Answer = 3
+    | Text = 4
+    | Number = 5
+    | Select = 6
+    | Proceed = 7
+    | Extended = 8
+    | Cancel = 9
 
 /// Action DTO the model returns each turn. The order of these fields
 /// drives the model to think first and then act.
@@ -44,13 +43,13 @@ type AgentAction =
         [<JsonPropertyName("Prediction")>]
         _Prediction : string
 
-        [<Description("The kind of action to take.")>]
-        Kind : ActionKind
+        [<Description("The type of action to take.")>]
+        Type : ActionType
 
         [<Description("Argument for the action. \
             Move/Run: one of N|S|E|W|NE|NW|SE|SW. \
             Key/Answer: a single character. \
-            Text: the line to type. \
+            Text: a line of text. \
             Number: an integer. \
             Select: the menu letters (e.g. 'a' or 'ac'). \
             Extended: an extended command name (e.g. loot, pray, etc.). \
@@ -116,6 +115,8 @@ module Note =
 module ApiExt =
 
     type Pos with
+
+        /// Display string.
         member pos.String =
             $"({pos.X},{pos.Y})"
 
@@ -260,33 +261,33 @@ module Prompt =
 
             match pending with
                 | Direction _ ->
-                    "Specify a direction via Kind=Move or use Kind=Cancel to \
+                    "Specify a direction via Type=Move or use Type=Cancel to \
                     back out."
                 | MultiChoice(_, choices, _) ->
                     let desc =
                         if choices = "" then "one of the characters offered"
                         else $"one character from '{choices}'"
-                    $"Reply Kind=Answer with Value set to {desc} or use \
-                    Kind=Cancel to back out."
+                    $"Reply Type=Answer with Value set to {desc} or use \
+                    Type=Cancel to back out."
                 | Quantity _ ->
-                    "Specify a quantity via Kind=Number or use Kind=Cancel to \
+                    "Specify a quantity via Type=Number or use Type=Cancel to \
                     back out."
                 | TextLine _ ->
-                    "Reply Kind=Text or use Kind=Cancel to back out."
+                    "Reply Type=Text or use Type=Cancel to back out."
                 | Menu(_, PickNone, _) ->
-                    "Reply Kind=Proceed to dismiss the menu."
+                    "Reply Type=Proceed to dismiss the menu."
                 | Menu _ ->
-                    "Reply Kind=Select with the item letters or use Kind=Cancel \
+                    "Reply Type=Select with the item letters or use Type=Cancel \
                     to cancel."
                 | More ->
-                    "Reply Kind=Proceed to continue."
+                    "Reply Type=Proceed to continue."
                 | Command ->
                     "Reply with a command."
-                    "To move, use Kind=Run (move multiple steps at once) or \
-                    Kind=Move (move only one step)."
+                    "To move, use Type=Run (move multiple steps at once) or \
+                    Type=Move (move only one step)."
                     "For a named action, such as kick, loot, pray, apply, \
-                    force, or dip, use Kind=Extended with the command name."
-                    "Use Kind=Key only for a simple command, such as 's' \
+                    force, or dip, use Type=Extended with the command name."
+                    "Use Type=Key only for a simple command, such as 's' \
                     (search) or ',' (pick up), optionally with Count to \
                     repeat."
                 | GameOver _ ->
@@ -309,9 +310,9 @@ module Prompt =
     /// Describes the given agent action.
     let getActionDesc (aa : AgentAction) =
         if aa.Count <= 1 then
-            $"{aa.Kind} {expandCtrl aa.Value}"
+            $"{aa.Type} {expandCtrl aa.Value}"
         else
-            $"{aa.Kind} {expandCtrl aa.Value} ({aa.Count})"
+            $"{aa.Type} {expandCtrl aa.Value} ({aa.Count})"
 
     /// Creates the "Prediction" portion of a prompt.
     let private getPrediction aaOpt =
@@ -356,16 +357,11 @@ module Prompt =
             ""
             "# Dungeon navigation tips"
 
-            "* Prefer Run over Move when exploring. Use Move for precise \
-            navigation."
-            "* Take the opportunity to move (or run) diagonally when \
-            possible. However, note that you can't move diagonally into \
-            or out of an intact doorway."
-            "* To find new rooms, follow corridors towards blank \
-            (unexplored) regions. A corridor that looks like a dead end \
-            might continue further."
-            "* An object on the ground obscures the floor/corridor symbol \
-            underneath it, but doesn’t block the way."
+            "* Prefer the Run command over the Move command when \
+            exploring. Use Move for precise navigation."
+            "* Move (or Run) diagonally when applicable. (However, \
+            note that you can't move diagonally into or out of an \
+            intact doorway.)"
         ]
 
     /// Creates a prompt for the agent based on the current state.

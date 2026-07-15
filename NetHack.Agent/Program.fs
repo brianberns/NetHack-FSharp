@@ -46,19 +46,19 @@ module Program =
             (if isNull aa.Value then ""
             else aa.Value).Trim()
 
-        match aa.Kind with
+        match aa.Type with
 
-            | ActionKind.Move ->
+            | ActionType.Move ->
                 tryParseDirection value
                     |> Option.map Move
                     |> Option.defaultValue (Key 's')
 
-            | ActionKind.Run ->
+            | ActionType.Run ->
                 tryParseDirection value
                     |> Option.map Run
                     |> Option.defaultValue (Key 's')
 
-            | ActionKind.Key ->
+            | ActionType.Key ->
                 if value.Length = 0 then
                     Proceed
                 elif aa.Count >= 2 then
@@ -66,26 +66,26 @@ module Program =
                 else
                     Key value[0]
 
-            | ActionKind.Answer ->
+            | ActionType.Answer ->
                 Answer (
                     if value.Length > 0 then value[0]
                     else 'y')
 
-            | ActionKind.Text ->
+            | ActionType.Text ->
                 Text value
 
-            | ActionKind.Extended ->
+            | ActionType.Extended ->
                 Extended value
 
-            | ActionKind.Cancel ->
+            | ActionType.Cancel ->
                 Cancel
 
-            | ActionKind.Number ->
+            | ActionType.Number ->
                 match Int32.TryParse(value) with
                     | true, n -> Number n
                     | _ -> Number 0
 
-            | ActionKind.Select ->
+            | ActionType.Select ->
                 value
                     |> Seq.where (Char.IsWhiteSpace >> not)
                     |> Seq.toList
