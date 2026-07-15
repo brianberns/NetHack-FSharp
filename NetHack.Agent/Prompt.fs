@@ -128,15 +128,7 @@ module Prompt =
             objective while also responding to challenges and threats."
         ]
 
-    let private toTable headerA headerB pairs =
-        [
-            $"| {headerA} | {headerB} "
-            "|--|--|"
-            for (a, b) in pairs do
-                $"| {a} | {b} |"
-        ]
-
-    /// Creates the "Dungeon map" portion of the prompt.
+    /// Creates the "Dungeon map" portion of a prompt.
     let private getDungeonMap (observation : Observation) =
         [
             ""
@@ -150,29 +142,66 @@ module Prompt =
             "```"
 
             "## Legend:"
-            yield! toTable "Symbol" "Name"
-                (Map.toSeq observation.Legend)
+            "| Symbol | Name |"
+            "|--|--|"
+            for (symbol, name) in Map.toSeq observation.Legend do
+                $"| {symbol} | {name} |"
         ]
 
-    let private toLocation x y =
-        $"({x}, {y})"
+    type private Pos with
+        member pos.String =
+            $"({pos.X}, {pos.Y})"
 
+    /// Creates the "Hero" portion of a prompt.
     let private getHero (observation : Observation) =
         [
             ""
             "# Hero"
 
-            $"* Location: {toLocation observation.Hero.X observation.Hero.Y}"
+            $"* Location: {observation.Hero.String}"
             $"* Role: {observation.Character.Role}"
             $"* Race: {observation.Character.Race}"
             $"* Gender: {observation.Character.Gender}"
         ]
+
+    /// Creates the "Entities" portion of a prompt.
+    let private getEntities entities =
+        [
+            ""
+            "# Entities"
+            "| Position | Symbol | Kind | Name | Pile | Viewability |"
+            "|--|--|--|--|--|--|"
+            for (entity : Entity) in entities do
+                let name = Option.defaultValue "" entity.Name
+                let pile = if entity.Pile then "Pile" else ""
+                let viewable =
+                    if entity.InView then "In view"
+                    else "Out of view"
+                $"| {entity.Pos.String} | {entity.Symbol} | {entity.Kind} | {name} | {pile} | {viewable} |"
+            ""
+            "When multiple entities occupy the same square (a 'pile'), \
+            only the top one is shown on the map and listed here."
+        ]
+
+        (*
+      "pos": {
+        "x": 68,
+        "y": 3
+      },
+      "symbol": ")",
+      "kind": "Object",
+      "name": "a curved sword",
+      "color": "black",
+      "pile": false,
+      "inView": true
+      *)
 
     /// Gets the "Game state" portion of a prompt.
     let private getState observation =
         [
             yield! getDungeonMap observation
             yield! getHero observation
+            yield! getEntities observation.Entities
 
             ""
             "# Current game state"
@@ -294,8 +323,6 @@ module Prompt =
             "* To find new rooms, follow corridors towards blank \
             (unexplored) regions. A corridor that looks like a dead end \
             might continue further."
-            "* When two entities occupy the same square, only the top one is \
-            shown on the map."
             "* An object on the ground obscures the floor/corridor symbol \
             underneath it, but doesn’t block the way."
         ]
