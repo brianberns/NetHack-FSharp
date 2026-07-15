@@ -5,15 +5,9 @@ open System.IO
 
 open NetHack.Api
 
-module Array =
-
-    let isNullOrEmpty (array : _[]) =
-        if isNull array then true
-        else array.Length = 0
-
 module View =
 
-    let truncateRuler len (chunks : seq<string>) : string =
+    let private truncateRuler len (chunks : seq<string>) : string =
         chunks
             |> Seq.collect id
             |> Seq.truncate len
@@ -22,7 +16,7 @@ module View =
 
     /// Creates a view of the given state and the action to be
     /// taken in that state.
-    let createView state notes aa =
+    let createView state (notes : _[]) (aa : AgentAction) =
 
         use wtr = new StringWriter()
 
@@ -78,21 +72,21 @@ module View =
                 wtr.WriteLine($"Pending: {pending}")
 
             // notes
-        if not (Array.isNullOrEmpty notes) then
+        if notes.Length > 0 then
             wtr.WriteLine()
             wtr.WriteLine("Existing notes:")
             for i = 0 to notes.Length - 1 do
                 let note = notes[i]
                 wtr.WriteLine($"   {i+1}({note.Age}): {note.Text}")
-        if not (Array.isNullOrEmpty aa.NotesToAdd) then
+        if aa.NotesToAdd.Length > 0 then
             wtr.WriteLine()
             wtr.WriteLine("Notes to add:")
             for note in aa.NotesToAdd do
                 wtr.WriteLine($"   {note}")
-        if not (Array.isNullOrEmpty aa.NotesToDelete) then
+        if aa.NotesToDelete.Length > 0 then
             wtr.WriteLine()
             wtr.WriteLine($"Notes to delete: %A{aa.NotesToDelete}")
-        if not (Array.isNullOrEmpty aa.RelevantNotes) then
+        if aa.RelevantNotes.Length > 0 then
             wtr.WriteLine()
             wtr.WriteLine($"Relevant notes: %A{aa.RelevantNotes}")
 

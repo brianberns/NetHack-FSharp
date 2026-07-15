@@ -40,7 +40,7 @@ module Program =
 
     /// Converts the model's action into a strongly-typed NetHack.Api
     /// action.
-    let toAction aa =
+    let toAction (aa : AgentAction) =
 
         let value =
             (if isNull aa.Value then ""
@@ -95,12 +95,9 @@ module Program =
                 Proceed
 
     /// Updates the given note database.
-    let updateNotes aa (notes : _[]) =
+    let updateNotes (aa : AgentAction) (notes : _[]) =
 
-        let toIdxSet arr =
-            if Array.isNullOrEmpty arr then Set.empty
-            else arr |> Seq.map (fun id -> id - 1) |> set
-
+        let toIdxSet = Seq.map (fun id -> id - 1) >> set
         let deleteIdxs = toIdxSet aa.NotesToDelete
         let relevantIdxs = toIdxSet aa.RelevantNotes
 
@@ -116,9 +113,7 @@ module Program =
                         Some { note with Age = note.Age + 1 }
                     else                                   // note aged out
                         None)
-        if Array.isNullOrEmpty aa.NotesToAdd then
-            kept
-        else [|
+        [|
             yield! kept
             yield! Array.map Note.create aa.NotesToAdd
         |]

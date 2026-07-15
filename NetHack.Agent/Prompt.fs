@@ -26,19 +26,23 @@ type AgentAction =
     {
         [<Description("Your notes from this turn. Use these to record \
         your plan and what you've learned for future use.")>]
-        NotesToAdd : string[]
+        [<JsonPropertyName("NotesToAdd")>]
+        _NotesToAdd : string[]
 
         [<Description("IDs of notes to delete because they are now \
         incorrect or obsolete.")>]
-        NotesToDelete : int[]
+        [<JsonPropertyName("NotesToDelete")>]
+        _NotesToDelete : int[]
 
         [<Description("IDs of notes that were relevant on this turn.")>]
-        RelevantNotes : int[]
+        [<JsonPropertyName("RelevantNotes")>]
+        _RelevantNotes : int[]
 
         [<Description("A sentence quantifying the expected result of \
             the action you are about to take, such as the hero's \
             expected new location.")>]
-        Prediction : string
+        [<JsonPropertyName("Prediction")>]
+        _Prediction : string
 
         [<Description("The kind of action to take.")>]
         Kind : ActionKind
@@ -51,21 +55,47 @@ type AgentAction =
             Select: the menu letters (e.g. 'a' or 'ac'). \
             Extended: an extended command name (e.g. loot, pray, etc.). \
             Proceed/Cancel: ignored.")>]
-        Value : string
+        [<JsonPropertyName("Value")>]
+        _Value : string
 
         [<Description("Optional repeat count for a Key command, such \
             as 's' (search) or '.' (rest).")>]
         Count : int
     }
 
+    member this.NotesToAdd =
+        if isNull this._NotesToAdd then Array.empty
+        else this._NotesToAdd
+
+    member this.NotesToDelete =
+        if isNull this._NotesToDelete then Array.empty
+        else this._NotesToDelete
+
+    member this.RelevantNotes =
+        if isNull this._RelevantNotes then Array.empty
+        else this._RelevantNotes
+
+    member this.Prediction =
+        if isNull this._Prediction then ""
+        else this._Prediction
+
+    member this.Value =
+        if isNull this._Value then ""
+        else this._Value
+
+/// A note the agent uses to plan ahead.
 type Note =
     {
+        /// Note content.
         Text : string
+
+        /// Note age.
         Age : int
     }
 
 module Note =
 
+    /// Creates a note.
     let create text =
         {
             Text = text
@@ -75,7 +105,7 @@ module Note =
 module Prompt =
 
     /// Provides guidance for responding to a prompt.
-    let getGuidance = function
+    let private getGuidance = function
         | Direction _ ->
             "Specify a direction via Kind=Move, or Kind=Cancel to \
             back out."
@@ -108,7 +138,7 @@ module Prompt =
             "The game is over."
 
     /// Expands any ASCII control characters in the given text.
-    let expandCtrl (text : string) =
+    let private expandCtrl (text : string) =
         let text = if isNull text then "" else text
         String.concat "" [
             for c in text do
