@@ -71,6 +71,13 @@ nhglue_describe_at(int x, int y, char *buf, int buflen)
         category = 3;
     else if (glyph_is_trap(glyph))
         category = 4;
+    else if (glyph_is_invisible(glyph) || glyph_is_warning(glyph))
+        /* 'I' marks a square the hero remembers holds a monster it cannot see
+           (map_invisible); a warning glyph marks a sensed-but-unseen monster
+           (the 'warning' option). Both mean "a monster is here you can't see",
+           so surface them as an entity rather than leaving a bare symbol on the
+           map with nothing in the entity list to explain it. */
+        category = 5;
     else
         return 0;
 

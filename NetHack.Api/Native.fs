@@ -469,7 +469,7 @@ module Native =
                             let kind =
                                 match cat with
                                 | 1 -> Monster | 2 -> Pet | 3 -> GlyphKind.Object
-                                | 4 -> Trap | _ -> Unexplored
+                                | 4 -> Trap | 5 -> Warning | _ -> Unexplored
                             entities.Add
                                 { Pos = { X = x; Y = y }; Symbol = glyphs[y, x]
                                   Kind = kind; Name = Some(sb.ToString())
