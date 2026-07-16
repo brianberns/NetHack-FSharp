@@ -387,6 +387,38 @@ module View =
                 ]
             ])
 
+    // ---------------------------------------------------------------- action
+
+    /// What the player did this turn, and what they expected it to do. The
+    /// prediction is worth reading back against the next turn's messages.
+    let private renderAction (session : SessionState) =
+        panel "Action" (
+            Html.div [
+                prop.className "panel-body"
+                prop.children [
+                    Html.div [
+                        prop.className "acts"
+                        prop.children [
+                            // flat, so that the labels share a grid column and
+                            // line up with each other
+                            for label, text in
+                                [ "Taken", session.Action
+                                  "Expected", session.Prediction ] do
+                                Html.div [
+                                    prop.key label
+                                    prop.className "act-label"
+                                    prop.text label
+                                ]
+                                Html.div [
+                                    prop.key (label + "-v")
+                                    prop.className "act-text"
+                                    prop.text text
+                                ]
+                        ]
+                    ]
+                ]
+            ])
+
     // ---------------------------------------------------------------- vitals
 
     let private meter label value maxValue fillClass =
@@ -618,6 +650,7 @@ module View =
                                 renderMap obs
                                 renderPrompt gameState.Pending
                                 renderNotes gameState
+                                renderAction gameState
                             ]
                         ]
                         Html.div [

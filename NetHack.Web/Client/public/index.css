@@ -322,6 +322,39 @@ html, body {
     vertical-align: -1px;
 }
 
+/* ---------- action ---------- */
+
+/* One grid for both rows, so the labels share a column and stay aligned. The
+   column takes its width from the widest of them: a fixed width would have to
+   guess, as these are proportional caps and ch measures a digit. */
+.acts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 12px;
+}
+
+/* the second row, ruled off from the first */
+.acts > :nth-child(n+3) {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px solid var(--border);
+}
+
+.act-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.act-text {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px;
+}
+
 /* ---------- meters ---------- */
 
 .meter { margin-bottom: 10px; }

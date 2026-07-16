@@ -67,10 +67,10 @@ module Api =
             return {
                 Observation = state.Observation
                 Pending = state.Pending
-                CurrentNotes = Array.empty
-                RelevantNotes = Array.empty
-                NotesToDelete = Array.empty
-                NotesToAdd = Array.empty
+                CurrentNotes = [| Note.create "Test A"; Note.create "Test B" |]
+                RelevantNotes = [| 0 |]
+                NotesToDelete = [| 1 |]
+                NotesToAdd = [| Note.create "Test C" |]
                 Action = "Dummy action"
                 Prediction = "Dummy prediction"
             }
