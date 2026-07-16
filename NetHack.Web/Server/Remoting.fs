@@ -12,13 +12,13 @@ open NetHack.Api
 
 module Api =
 
-    let model = Gemini.flash
+    let model = OpenRouter.model
 
     let agent =
         let config =
             ConfigurationBuilder()
                 .AddUserSecrets(Assembly.GetExecutingAssembly())
-                // .AddEnvironmentVariables()
+                .AddEnvironmentVariables()
                 .Build()
         Agent.create config model
 
@@ -67,7 +67,12 @@ module Api =
             return {
                 Observation = state.Observation
                 Pending = state.Pending
-                Over = state.Over
+                CurrentNotes = Array.empty
+                RelevantNotes = Array.empty
+                NotesToDelete = Array.empty
+                NotesToAdd = Array.empty
+                Action = "Dummy action"
+                Prediction = "Dummy prediction"
             }
         }
 

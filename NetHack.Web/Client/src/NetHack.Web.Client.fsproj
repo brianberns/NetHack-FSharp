@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\..\NetHack.Api\Domain.fs" Link="Domain.fs" />
+    <Compile Include="..\..\..\NetHack.Agent\Note.fs" Link="Note.fs" />
     <Compile Include="..\..\Server\Shared.fs" Link="Shared.fs" />
     <Compile Include="Remoting.fs" />
     <Compile Include="Message.fs" />

@@ -271,6 +271,57 @@ html, body {
 
 .menu li.selected { color: var(--good); }
 
+/* ---------- notes ---------- */
+
+.notes {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.notes th {
+    padding: 0 8px 5px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+}
+
+.notes td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.notes tr:last-child td { border-bottom: none; }
+
+/* Text takes whatever the other four columns leave; they are all short and
+   fixed, so let them shrink to their contents. */
+.notes th:nth-child(2) { width: 100%; }
+
+.notes .note-id,
+.notes .note-age {
+    font-family: ui-monospace, Consolas, monospace;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.notes .note-age { text-align: right; }
+
+.notes .note-check {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.notes .note-check input {
+    margin: 0;
+    accent-color: var(--accent);
+    vertical-align: -1px;
+}
+
 /* ---------- meters ---------- */
 
 .meter { margin-bottom: 10px; }

@@ -3,6 +3,7 @@ namespace NetHack.Web
 open System
 open Feliz
 
+open NetHack.Agent
 open NetHack.Api
 
 module View =
@@ -316,6 +317,76 @@ module View =
                 ]
             ])
 
+    // ----------------------------------------------------------------- notes
+
+    /// Ticks the cell if the flag is set, and leaves it blank otherwise. The
+    /// box reports what the player decided this turn; it is not an input.
+    let private noteCheck flag =
+        Html.td [
+            prop.className "note-check"
+            prop.children [
+                if flag then
+                    Html.input [
+                        prop.type' "checkbox"
+                        prop.isChecked true
+                        prop.readOnly true
+                    ]
+            ]
+        ]
+
+    let private noteRow key id (note : Note) relevant delete =
+        Html.tr [
+            prop.key (key : string)
+            prop.children [
+                Html.td [ prop.className "note-id"; prop.text (id : string) ]
+                Html.td [ prop.className "note-text"; prop.text note.Text ]
+                Html.td [ prop.className "note-age"; prop.text (string note.Age) ]
+                noteCheck relevant
+                noteCheck delete
+            ]
+        ]
+
+    /// The notes the player is planning with: the ones carried into this turn,
+    /// numbered from 1, followed by the ones written during it, which have no
+    /// number until they are carried into the next turn.
+    let private renderNotes (session : SessionState) =
+        let relevant = Set.ofArray session.RelevantNotes
+        let toDelete = Set.ofArray session.NotesToDelete
+        panel "Notes" (
+            Html.div [
+                prop.className "panel-body scroll"
+                prop.children [
+                    if Array.isEmpty session.CurrentNotes
+                        && Array.isEmpty session.NotesToAdd then
+                        Html.div [ prop.className "empty"; prop.text "Nothing noted." ]
+                    else
+                        Html.table [
+                            prop.className "notes"
+                            prop.children [
+                                Html.thead [
+                                    prop.children [
+                                        Html.tr [
+                                            prop.children [
+                                                for name in [ "ID"; "Text"; "Age"; "Relevant"; "Delete" ] do
+                                                    Html.th [ prop.key name; prop.text name ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                                Html.tbody [
+                                    prop.children [
+                                        for i, note in Array.indexed session.CurrentNotes do
+                                            noteRow $"cur{i}" (string (i + 1)) note
+                                                (relevant.Contains i) (toDelete.Contains i)
+                                        for i, note in Array.indexed session.NotesToAdd do
+                                            noteRow $"new{i}" "New" note false false
+                                    ]
+                                ]
+                            ]
+                        ]
+                ]
+            ])
+
     // ---------------------------------------------------------------- vitals
 
     let private meter label value maxValue fillClass =
@@ -546,6 +617,7 @@ module View =
                                 renderMessages obs
                                 renderMap obs
                                 renderPrompt gameState.Pending
+                                renderNotes gameState
                             ]
                         ]
                         Html.div [

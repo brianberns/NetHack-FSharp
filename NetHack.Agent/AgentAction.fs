@@ -93,25 +93,6 @@ type AgentAction =
         if isNull this._Value then ""
         else this._Value
 
-/// A note the agent uses to plan ahead.
-type Note =
-    {
-        /// Note content.
-        Text : string
-
-        /// Note age.
-        Age : int
-    }
-
-module Note =
-
-    /// Creates a note.
-    let create text =
-        {
-            Text = text
-            Age = 0
-        }
-
 module AgentAction =
 
     /// Parses a compass/vertical direction, if possible.
