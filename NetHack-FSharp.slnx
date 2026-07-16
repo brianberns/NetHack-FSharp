@@ -1,4 +1,18 @@
 <Solution>
+  <Folder Name="/NetHack.Web/">
+    <Project Path="NetHack.Web/Client/src/NetHack.Web.Client.fsproj" />
+    <Project Path="NetHack.Web/Harness/NetHack.Web.Harness.fsproj" />
+    <Project Path="NetHack.Web/Server/NetHack.Web.Server.fsproj" />
+  </Folder>
+  <Folder Name="/NetHack.Web/Fable.Remoting/">
+    <Project Path="NetHack.Web/Fable.Remoting.Suave/Fable.Remoting.Json/Fable.Remoting.Json.fsproj" />
+    <Project Path="NetHack.Web/Fable.Remoting.Suave/Fable.Remoting.MsgPack/Fable.Remoting.MsgPack.fsproj" />
+    <Project Path="NetHack.Web/Fable.Remoting.Suave/Fable.Remoting.Server/Fable.Remoting.Server.fsproj" />
+    <Project Path="NetHack.Web/Fable.Remoting.Suave/Fable.Remoting.Suave/Fable.Remoting.Suave.fsproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+  </Folder>
   <Project Path="NetHack.Agent/NetHack.Agent.fsproj" />
   <Project Path="NetHack.Api/NetHack.Api.fsproj" />
   <Project Path="NetHack.Cli/NetHack.Cli.fsproj" />

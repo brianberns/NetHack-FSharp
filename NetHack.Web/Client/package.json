@@ -1,0 +1,21 @@
+{
+  "private": true,
+  "scripts": {
+    "postinstall": "dotnet tool restore",
+    "start": "dotnet fable watch src --sourceMaps --run webpack serve",
+    "build": "dotnet fable src --configuration Release --run webpack --mode production"
+  },
+  "devDependencies": {
+    "css-loader": "^7.1.4",
+    "source-map-loader": "^5.0.0",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.107.2",
+    "webpack-cli": "^7.0.3",
+    "webpack-dev-server": "^5.2.4"
+  },
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}

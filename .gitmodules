@@ -2,3 +2,6 @@
 	path = Core
 	url = https://github.com/brianberns/NetHack.git
 	branch = libnh-shim
+[submodule "NetHack.Web/Fable.Remoting.Suave"]
+	path = NetHack.Web/Fable.Remoting.Suave
+	url = https://github.com/brianberns/Fable.Remoting.Suave

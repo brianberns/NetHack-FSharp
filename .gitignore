@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Fable generated files
+.fable
+*.fs.js
+*.fs.js.map
+fable_modules/
+bundle.js
+temp/**
+node_modules/
