@@ -128,7 +128,7 @@ module View =
     let private renderMessages (obs : Observation) =
         panel "Messages" (
             Html.div [
-                prop.className "panel-body"
+                prop.className "panel-body messages-box"
                 prop.children [
                     if List.isEmpty obs.Messages then
                         Html.div [
@@ -154,7 +154,7 @@ module View =
 
     /// One character of the map: an entity's glyph if something decoded is
     /// standing here, otherwise plain terrain.
-    let private renderCell (legend : Map<string, string>) (entity : Entity option) (ch : char) =
+    let private renderCell (legend : Map<string, string>) (x : int) (entity : Entity option) (ch : char) =
         let symbol = string ch
         let className, color, tip =
             match entity with
@@ -178,6 +178,7 @@ module View =
                 | None ->
                     "cell", None, Map.tryFind symbol legend
         Html.span [
+            prop.key x
             prop.className className
             match color with
                 | Some c -> prop.style [ style.color c ]
@@ -202,6 +203,7 @@ module View =
                             prop.className "cell"
                             prop.text (digit x)
                         ]
+                    Html.span [ prop.className "map-gutter right" ]
                 ]
             ]
         [ ruler (fun x -> if x % 10 = 0 then string (x / 10) else " ")
@@ -220,19 +222,31 @@ module View =
                         prop.className "map"
                         prop.children [
                             yield! renderRulers obs.Width
-                            for y, row in List.indexed obs.Rows do
-                                Html.div [
-                                    prop.key y
-                                    prop.className "map-row"
-                                    prop.children [
-                                        Html.span [
-                                            prop.className "map-gutter"
-                                            prop.text (string y)
+                            Html.div [
+                                prop.className "map-grid"
+                                prop.children [
+                                    for y, row in List.indexed obs.Rows do
+                                        Html.div [
+                                            prop.key y
+                                            prop.className "map-row"
+                                            prop.children [
+                                                Html.span [
+                                                    prop.className "map-gutter"
+                                                    prop.text (string y)
+                                                ]
+                                                // pad short rows out to the full width, or
+                                                // the right-hand gutter would not line up
+                                                for x in 0 .. obs.Width - 1 do
+                                                    let ch = if x < row.Length then row[x] else ' '
+                                                    renderCell obs.Legend x (Map.tryFind (x, y) entities) ch
+                                                Html.span [
+                                                    prop.className "map-gutter right"
+                                                    prop.text (string y)
+                                                ]
+                                            ]
                                         ]
-                                        for x in 0 .. row.Length - 1 do
-                                            renderCell obs.Legend (Map.tryFind (x, y) entities) row[x]
-                                    ]
                                 ]
+                            ]
                             yield! renderRulers obs.Width
                         ]
                     ]

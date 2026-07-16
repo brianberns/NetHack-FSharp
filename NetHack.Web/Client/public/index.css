@@ -63,9 +63,13 @@ html, body {
 
 .banner-spacer { flex: 1; }
 
+/* The sidebar takes whatever the map does not need. The map is 86ch wide (80
+   cells plus two 3ch gutters), which at a 9px advance is 774px, and 800px once
+   the map-scroll padding and the panel border are counted; that leaves 330px
+   here. Widen the sidebar past this and the map starts scrolling instead. */
 .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 1fr) 330px;
     gap: 18px;
     align-items: start;
 }
@@ -108,6 +112,17 @@ html, body {
     overflow-y: auto;
 }
 
+/* A turn yields two messages at most, and usually none. Hold the box at two
+   lines either way so the dungeon below it never shifts. The height is the sum
+   of its parts: 6 padding + 18 line + 4 gap + 18 line + 6 padding. That only
+   stays exact while .message pins its own line-height. */
+.panel-body.messages-box {
+    height: 52px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    overflow-y: auto;
+}
+
 .empty {
     color: var(--dim);
     font-style: italic;
@@ -125,6 +140,7 @@ html, body {
 .message {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
     font-size: 13px;
+    line-height: 18px;
     color: var(--text);
     border-left: 2px solid var(--accent);
     padding-left: 9px;
@@ -152,12 +168,40 @@ html, body {
 
 .map-row { white-space: pre; }
 
+/* Frames the 80x21 grid, leaving the rulers outside it. Drawn as an overlay
+   rather than a border on the rows themselves: a real border would widen every
+   row and pull them out of step with the rulers. The insets clear the 1ch gap
+   the gutters already leave, so the frame lands beside the cells, not on them. */
+.map-grid {
+    position: relative;
+    padding: 2px 0;
+}
+
+.map-grid::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(3ch - 3px);
+    right: calc(3ch - 3px);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    pointer-events: none;
+}
+
 .map-gutter {
     display: inline-block;
     width: 3ch;
     padding-right: 1ch;
     color: var(--dim);
     text-align: right;
+}
+
+/* the same gutter mirrored, so a row can be read off either edge */
+.map-gutter.right {
+    padding-right: 0;
+    padding-left: 1ch;
+    text-align: left;
 }
 
 .cell {
