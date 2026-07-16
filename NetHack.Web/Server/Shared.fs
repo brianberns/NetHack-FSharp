@@ -34,5 +34,6 @@ type SessionState =
 
 type INetHackApi =
     {
-        GetSessionState : unit -> Async<SessionState>
+        GetStateCount : unit -> Async<int>
+        GetSessionState : int (*0-based index*) -> Async<Result<SessionState, string>>
     }

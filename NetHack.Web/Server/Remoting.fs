@@ -1,6 +1,8 @@
 ﻿namespace NetHack.Web
 
+open System
 open System.Reflection
+open System.Threading
 
 open Microsoft.Extensions.Configuration
 
@@ -10,11 +12,24 @@ open Fable.Remoting.Suave
 open NetHack.Agent
 open NetHack.Api
 
+type AsyncLock() =
+
+    let semaphore = new SemaphoreSlim(1, 1)
+    
+    member _.LockAsync() =
+        task {
+            do! semaphore.WaitAsync()
+            return {
+                new IDisposable with
+                    member _.Dispose() =
+                        semaphore.Release() |> ignore }
+        } |> Async.AwaitTask
+
 module Api =
 
-    let model = OpenRouter.model
+    let private model = OpenRouter.model
 
-    let agent =
+    let private agent =
         let config =
             ConfigurationBuilder()
                 .AddUserSecrets(Assembly.GetExecutingAssembly())
@@ -22,9 +37,37 @@ module Api =
                 .Build()
         Agent.create config model
 
-    let engine = Native.create ()
+    let private engine = Native.create ()
 
-    let act state prevActionOpt notes =
+    type private HiddenState =
+        {
+            GameState : GameState
+            AgentAction : AgentAction
+            Notes : Note[]
+        }
+
+    module private HiddenState =
+
+        let toSessionState hidden =
+            {
+                Observation = hidden.GameState.Observation
+                Pending = hidden.GameState.Pending
+                CurrentNotes = hidden.Notes
+                RelevantNotes =
+                    hidden.AgentAction.RelevantNotes
+                        |> Array.map (fun id -> id - 1)
+                NotesToDelete =
+                    hidden.AgentAction.NotesToDelete
+                        |> Array.map (fun id -> id - 1)
+                NotesToAdd =
+                    hidden.AgentAction.NotesToAdd
+                        |> Array.map Note.create
+                Action =
+                    Prompt.getActionDesc hidden.AgentAction
+                Prediction = hidden.AgentAction.Prediction
+            }
+
+    let private act state prevActionOpt notes =
         async {
             try
                     // get agent's action
@@ -38,47 +81,76 @@ module Api =
                     engine.Step state (AgentAction.toAction aa)
                 let notes = AgentAction.updateNotes aa notes
 
-                return state, (Some aa), notes
+                return Ok {
+                    GameState = state
+                    AgentAction = aa
+                    Notes = notes
+                }
 
             with exn ->
                 printfn $"{exn.Message}"
-                return state, prevActionOpt, notes
+                return Error exn.Message
         }
 
-    let mutable gameState =
-        { NewGame.defaults with
-            Name = Some model.Name }
-            |> engine.Start
+    let mutable private hiddenStates = ResizeArray<HiddenState>()
 
-    let mutable prevActionOpt : Option<AgentAction> = None
+    let private asyncLock = new AsyncLock()
 
-    let mutable notesDb : Note[] = Array.empty
-
-    let getSessionState () =
+    let private getStateCount () =
         async {
-            (*
-            let! state, aaOpt, notes =
-                act nativeState prevActionOpt notesDb
-            nativeState <- state
-            prevActionOpt <- aaOpt
-            notesDb <- notes
-            *)
-            let state = gameState
-            return {
-                Observation = state.Observation
-                Pending = state.Pending
-                CurrentNotes = [| Note.create "Test A"; Note.create "Test B" |]
-                RelevantNotes = [| 0 |]
-                NotesToDelete = [| 1 |]
-                NotesToAdd = [| Note.create "Test C" |]
-                Action = "Dummy action"
-                Prediction = "Dummy prediction"
-            }
+            use! _ = asyncLock.LockAsync()
+            return hiddenStates.Count
+        }
+
+    let private getSessionState stateIdx =
+        async {
+            use! _ = asyncLock.LockAsync()
+
+                // need to take an action?
+            if stateIdx >= hiddenStates.Count then
+
+                let gameState, prevActionOpt, notes =
+
+                        // start a new game?
+                    if hiddenStates.Count = 0 then
+                        let gameState =
+                            { NewGame.defaults with
+                                Name = Some model.Name }
+                                |> engine.Start
+                        gameState, None, Array.empty
+
+                        // use latest state
+                    else
+                        let hidden = hiddenStates[hiddenStates.Count - 1]
+                        hidden.GameState,
+                        Some hidden.AgentAction,
+                        hidden.Notes
+
+                    // get agent's action
+                match! act gameState prevActionOpt notes with
+                    | Ok hidden ->
+                        hiddenStates.Add(hidden)
+                        let sessionState = HiddenState.toSessionState hidden
+                        return Ok sessionState
+                    | Error msg ->
+                        return Error msg
+
+                // can return an existing state
+            else
+                let hidden =
+                    let stateIdx =
+                        stateIdx
+                            |> min (hiddenStates.Count - 1)
+                            |> max 0
+                    hiddenStates[stateIdx]
+                let sessionState = HiddenState.toSessionState hidden
+                return Ok sessionState
         }
 
     /// NetHack API.
     let netHackApi =
         {
+            GetStateCount = getStateCount
             GetSessionState = getSessionState
         }
 
