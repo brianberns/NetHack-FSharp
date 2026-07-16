@@ -17,9 +17,9 @@ module Remoting =
 
     let getGameState () =
         async {
-            match! Async.Catch(api.GetGameState ()) with
-                | Choice1Of2 gameState ->
-                    return Ok gameState
+            match! Async.Catch(api.GetSessionState ()) with
+                | Choice1Of2 state ->
+                    return Ok state
                 | Choice2Of2 exn ->
                     console.log(exn.Message)
                     return Error exn.Message

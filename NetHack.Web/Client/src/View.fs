@@ -531,7 +531,7 @@ module View =
 
     // ------------------------------------------------------------------ page
 
-    let private renderGameState (gameState : GameStateWeb) =
+    let private renderGameState (gameState : SessionState) =
         let obs = gameState.Observation
         Html.div [
             prop.className "app"

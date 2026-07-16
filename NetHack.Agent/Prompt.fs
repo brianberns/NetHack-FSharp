@@ -1,115 +1,6 @@
 namespace NetHack.Agent
 
-open System.ComponentModel
-open System.Text.Json.Serialization
-
 open NetHack.Api
-
-/// The types of action the model may choose.
-[<JsonConverter(typeof<JsonStringEnumConverter>)>]
-type ActionType =
-    | Run = 0
-    | Move = 1
-    | Key = 2
-    | Answer = 3
-    | Text = 4
-    | Number = 5
-    | Select = 6
-    | Proceed = 7
-    | Extended = 8
-    | Cancel = 9
-
-/// Action DTO the model returns each turn. The order of these fields
-/// drives the model to think first and then act.
-type AgentAction =
-    {
-        [<Description("Your notes from this turn. Use these to record \
-        your plan and what you've learned for future use.")>]
-        [<JsonPropertyName("NotesToAdd")>]
-        _NotesToAdd : string[]
-
-        [<Description("IDs of notes to delete because they are now \
-        incorrect or obsolete.")>]
-        [<JsonPropertyName("NotesToDelete")>]
-        _NotesToDelete : int[]
-
-        [<Description("IDs of notes that were relevant on this turn.")>]
-        [<JsonPropertyName("RelevantNotes")>]
-        _RelevantNotes : int[]
-
-        [<Description("A sentence quantifying the expected result of \
-            the action you are about to take, such as the hero's \
-            expected new location.")>]
-        [<JsonPropertyName("Prediction")>]
-        _Prediction : string
-
-        [<Description("The type of action to take.")>]
-        Type : ActionType
-
-        [<Description("Argument for the action. \
-            Move/Run: one of N|S|E|W|NE|NW|SE|SW. \
-            Key/Answer: a single character. \
-            Text: a line of text. \
-            Number: an integer. \
-            Select: the menu letters (e.g. 'a' or 'ac'). \
-            Extended: an extended command name (e.g. loot, pray, etc.). \
-            Proceed/Cancel: ignored.")>]
-        [<JsonPropertyName("Value")>]
-        _Value : string
-
-        [<Description("Optional repeat count for a Key command, such \
-            as 's' (search) or '.' (rest).")>]
-        Count : int
-    }
-
-    /// Notes added this turn.
-    [<JsonIgnore>]
-    member this.NotesToAdd =
-        if isNull this._NotesToAdd then Array.empty
-        else this._NotesToAdd
-
-    /// Notes deleted this turn.
-    [<JsonIgnore>]
-    member this.NotesToDelete =
-        if isNull this._NotesToDelete then Array.empty
-        else this._NotesToDelete
-
-    /// Notes deemed relevant this turn.
-    [<JsonIgnore>]
-    member this.RelevantNotes =
-        if isNull this._RelevantNotes then Array.empty
-        else this._RelevantNotes
-
-    /// This turn's prediction.
-    [<JsonIgnore>]
-    member this.Prediction =
-        if isNull this._Prediction then ""
-        else this._Prediction
-
-    /// This turn's value.
-    [<JsonIgnore>]
-    member this.Value =
-        if isNull this._Value then ""
-        else this._Value
-
-/// A note the agent uses to plan ahead.
-type Note =
-    {
-        /// Note content.
-        Text : string
-
-        /// Note age.
-        Age : int
-    }
-
-module Note =
-
-    /// Creates a note.
-    let create text =
-        {
-            Text = text
-            Age = 0
-        }
 
 [<AutoOpen>]
 module ApiExt =
@@ -342,7 +233,7 @@ module Prompt =
         ]
 
     /// Creates the "Notes" portion of a prompt.
-    let private getNotes (notes : _[]) =
+    let private getNotes (notes : Note[]) =
         [
             if notes.Length > 0 then
                 ""

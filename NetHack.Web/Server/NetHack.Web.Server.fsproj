@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UserSecretsId>2753b8eb-7a2b-4b3a-907d-7a1055799a75</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,9 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
     <PackageReference Include="Suave" Version="3.4.4">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
+    <ProjectReference Include="..\..\NetHack.Agent\NetHack.Agent.fsproj" />
     <ProjectReference Include="..\..\NetHack.Api\NetHack.Api.fsproj" />
     <ProjectReference Include="..\Fable.Remoting.Suave\Fable.Remoting.Suave\Fable.Remoting.Suave.fsproj" />
     <PackageReference Update="FSharp.Core">

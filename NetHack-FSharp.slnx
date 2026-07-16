@@ -13,6 +13,7 @@
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
   </Folder>
+  <Project Path="NetHack.Agent.Console/NetHack.Agent.Console.fsproj" Id="32d0d5eb-5834-490e-af37-ff9297928385" />
   <Project Path="NetHack.Agent/NetHack.Agent.fsproj" />
   <Project Path="NetHack.Api/NetHack.Api.fsproj" />
   <Project Path="NetHack.Cli/NetHack.Cli.fsproj" />

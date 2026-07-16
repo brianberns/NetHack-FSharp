@@ -1,16 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <UserSecretsId>2753b8eb-7a2b-4b3a-907d-7a1055799a75</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Agent.fs" />
+    <Compile Include="AgentAction.fs" />
     <Compile Include="Prompt.fs" />
-    <Compile Include="View.fs" />
-    <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,8 +18,6 @@
     <PackageReference Include="FSharp.Data" Version="8.1.14" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.7.0" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
   </ItemGroup>
 
 </Project>

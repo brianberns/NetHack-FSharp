@@ -2,14 +2,14 @@ namespace NetHack.Web
 
 open NetHack.Api
 
-type GameStateWeb =
+type SessionState =
     {
         Observation : Observation
-        Pending     : Prompt
-        Over        : bool
+        Pending : Prompt
+        Over : bool
     }
 
 type INetHackApi =
     {
-        GetGameState : unit -> Async<GameStateWeb>
+        GetSessionState : unit -> Async<SessionState>
     }
