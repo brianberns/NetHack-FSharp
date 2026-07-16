@@ -77,7 +77,7 @@ module Api =
         }
 
     /// NetHack API.
-    let netHackApi dir =
+    let netHackApi =
         {
             GetSessionState = getSessionState
         }
@@ -85,7 +85,7 @@ module Api =
 module Remoting =
 
     /// Build API.
-    let webPart dir =
+    let webPart (dir : string) =
         Remoting.createApi()
-            |> Remoting.fromValue (Api.netHackApi dir)
+            |> Remoting.fromValue Api.netHackApi
             |> Remoting.buildWebPart
