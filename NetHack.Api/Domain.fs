@@ -1,7 +1,5 @@
 namespace NetHack.Api
 
-open System.Text.Json.Serialization
-
 /// A coordinate on the dungeon map. X is the column (0..79), Y is the row (0..20).
 type Pos = { X: int; Y: int }
 
@@ -145,6 +143,10 @@ type Observation = {
     Messages  : string list    // messages produced by the action that led here
 }
 
+#if !FABLE_COMPILER
+
+open System.Text.Json.Serialization
+
 /// The value the API is a function of. `Continuation` holds the in-process
 /// engine's private state and is never serialized. Callers reason about
 /// `Observation` and `Pending`.
@@ -200,3 +202,5 @@ module NewGame =
 type IEngine =
     abstract member Start : NewGame -> GameState
     abstract member Step  : GameState -> Action -> GameState
+
+#endif

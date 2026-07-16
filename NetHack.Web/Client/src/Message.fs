@@ -4,7 +4,7 @@ open System
 open Fable.Core
 open Elmish
 
-type State = Result<Option<GameState>, string>
+type State = Result<Option<GameStateWeb>, string>
 
 type Message =
     | Update of State

@@ -8,7 +8,7 @@ open NetHack.Api
 module Api =
 
     let engine = Native.create ()
-    let gameState =
+    let nativeState =
         engine.Start {
             NewGame.defaults
                 with Name = Some "Gemini"
@@ -19,7 +19,13 @@ module Api =
         {
             GetGameState =
                 fun () ->
-                    async { return string gameState }
+                    async {
+                        return {
+                            Observation = nativeState.Observation
+                            Pending = nativeState.Pending
+                            Over = nativeState.Over
+                        }
+                    }
         }
 
 module Remoting =
