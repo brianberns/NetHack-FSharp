@@ -341,7 +341,7 @@ module View =
         let toDelete = Set.ofArray session.NotesToDelete
         panel "Agent's Notes" (
             Html.div [
-                prop.className "panel-body scroll"
+                prop.className "panel-body scroll notes-box"
                 prop.children [
                     if Array.isEmpty session.CurrentNotes
                         && Array.isEmpty session.NotesToAdd then
@@ -578,7 +578,6 @@ module View =
                         Html.div [
                             prop.className "column"
                             prop.children [
-                                renderMessages obs
                                 renderMap obs
                                 Html.div [
                                     prop.className "subcolumns"
@@ -592,6 +591,7 @@ module View =
                                         Html.div [
                                             prop.className "column"
                                             prop.children [
+                                                renderMessages obs
                                                 renderPrompt gameState.Pending
                                                 renderAction gameState
                                                 Html.footer [

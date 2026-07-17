@@ -96,10 +96,15 @@ html, body {
     overflow-y: auto;
 }
 
+/* Roughly what the panels beside it come to, so the two halves under the map
+   finish together and neither leaves the other's space blank. */
+.panel-body.notes-box { max-height: 460px; }
+
 /* A turn yields two messages at most, and usually none. Hold the box at two
-   lines either way so the dungeon below it never shifts. The height is the sum
-   of its parts: 6 padding + 18 line + 4 gap + 18 line + 6 padding. That only
-   stays exact while .message pins its own line-height. */
+   lines either way, so that the panels below it stay put as the turn's
+   messages come and go. The height is the sum of its parts: 6 padding + 18
+   line + 4 gap + 18 line + 6 padding. That only stays exact while .message
+   pins its own line-height. */
 .panel-body.messages-box {
     height: 52px;
     padding-top: 6px;
