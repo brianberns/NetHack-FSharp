@@ -528,6 +528,14 @@ html, body {
 .footer {
     display: flex;
     justify-content: center;
+    gap: 8px;
+}
+
+/* the icon-only rewind button: square-ish, no wide letter-spacing padding */
+.button.rewind {
+    padding: 7px 14px;
+    letter-spacing: 0;
+    line-height: 1;
 }
 
 .button {

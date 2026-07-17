@@ -45,6 +45,9 @@ type Message =
     /// Requests next UI state from server.
     | GetNextState
 
+    /// Rewinds to first turn.
+    | Rewind
+
 module Message =
 
     /// Requests the given state from the server.
@@ -79,31 +82,40 @@ module Message =
     let init () =
         Ok None, getCurrentState
 
-    /// Requests the next session state from the server.
-    let private getNextState stateIdx =
-        Cmd.OfAsync.perform
-            getState
-            (stateIdx + 1)
-            SetState
+    /// Requests the given state from the server.
+    let private getStateCmd stateIdx =
+        Cmd.OfAsync.perform getState stateIdx SetState
+
+    /// Handles a GetNextState message.
+    let private handleGetNextState state =
+        match state with
+
+                // initiate request
+            | Ok (Some inner) when not inner.Busy ->
+                Ok (Some { inner with Busy = true }),
+                getStateCmd (inner.StateIdx + 1)
+
+                // ignore messages while waiting on server
+            | state -> state, Cmd.none
+
+    /// Handles a Rewind message.
+    let private handleRewind state =
+        match state with
+
+                // initiate request
+            | Ok (Some inner) when not inner.Busy ->
+                Ok (Some { inner with Busy = true }),
+                getStateCmd 0
+
+                // ignore messages while waiting on server
+            | state -> state, Cmd.none
 
     /// Updates the user interface based on the given message.
-    let update msg (state : State) =
+    let update msg state =
         match msg with
-
-                // set the UI state
             | SetState state -> state, Cmd.none
-
-                // request the next UI state from the server
-            | GetNextState ->
-                match state with
-
-                        // initiate request
-                    | Ok (Some inner) when not inner.Busy ->
-                        Ok (Some { inner with Busy = true }),
-                        getNextState inner.StateIdx
-
-                        // ignore messages while waiting on server
-                    | _ -> state, Cmd.none
+            | GetNextState -> handleGetNextState state
+            | Rewind -> handleRewind state
 
     /// Subscribes to the Enter key regardless of where the focus is.
     let subscribe (_ : State) : Sub<Message> =

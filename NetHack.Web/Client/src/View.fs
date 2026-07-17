@@ -613,6 +613,14 @@ module View =
                                                     prop.className "footer"
                                                     prop.children [
                                                         Html.button [
+                                                            prop.className "button rewind"
+                                                            prop.disabled inner.Busy
+                                                            prop.title "Rewind to start"
+                                                            prop.onClick (fun _ ->
+                                                                dispatch Rewind)
+                                                            prop.text "⏮"
+                                                        ]
+                                                        Html.button [
                                                             prop.className "button"
                                                             prop.disabled inner.Busy
                                                             prop.onClick (fun _ ->
