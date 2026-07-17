@@ -13,28 +13,28 @@ module View =
     /// does, or it would be invisible.)
     let private palette =
         Map [
-            "black",          "#6272a4"
-            "red",            "#e05252"
-            "green",          "#3fb950"
-            "brown",          "#a9762f"
-            "blue",           "#4a7fd4"
-            "magenta",        "#b45cc4"
-            "cyan",           "#29a8a8"
-            "gray",           "#a8b1bb"
-            "no-color",       "#c9d1d9"
-            "orange",         "#e08a3c"
-            "bright-green",   "#56d364"
-            "yellow",         "#e6d155"
-            "bright-blue",    "#79b8ff"
-            "bright-magenta", "#e07ce8"
-            "bright-cyan",    "#5fdede"
-            "white",          "#f0f6fc"
+            "black",          "#7d8cbd"
+            "red",            "#ef6b6b"
+            "green",          "#4ecc60"
+            "brown",          "#c78c3d"
+            "blue",           "#5f92e4"
+            "magenta",        "#c96fd8"
+            "cyan",           "#36bcbc"
+            "gray",           "#b4bdc7"
+            "no-color",       "#d3dae1"
+            "orange",         "#ef9a4b"
+            "bright-green",   "#6ce478"
+            "yellow",         "#f0dc66"
+            "bright-blue",    "#8ec4ff"
+            "bright-magenta", "#ec8ff4"
+            "bright-cyan",    "#75e9e9"
+            "white",          "#ffffff"
         ]
 
     let private colorOf name =
         palette
             |> Map.tryFind name
-            |> Option.defaultValue "#c9d1d9"
+            |> Option.defaultValue "#d3dae1"
 
     /// NetHack reports race and gender in lower case, unlike role.
     let private capitalize (str : string) =
@@ -581,10 +581,11 @@ module View =
 
     // ------------------------------------------------------------------ page
 
-    let private renderGameState (gameState : SessionState) (dispatch : Message -> unit) =
+    let private renderGameState (inner : InnerState) (dispatch : Message -> unit) =
+        let gameState = inner.SessionState
         let obs = gameState.Observation
         Html.div [
-            prop.className "app"
+            prop.className (if inner.Busy then "app busy" else "app")
             prop.children [
                 Html.div [
                     prop.className "layout"
@@ -613,9 +614,12 @@ module View =
                                                     prop.children [
                                                         Html.button [
                                                             prop.className "button"
+                                                            prop.disabled inner.Busy
                                                             prop.onClick (fun _ ->
                                                                 dispatch GetNextState)
-                                                            prop.text "Next"
+                                                            prop.text (
+                                                                if inner.Busy then "Thinking…"
+                                                                else "Next")
                                                         ]
                                                     ]
                                                 ]
@@ -646,7 +650,7 @@ module View =
                     prop.text "Entering the dungeon…"
                 ]
             | Ok (Some inner) ->
-                renderGameState inner.SessionState dispatch
+                renderGameState inner dispatch
             | Error msg ->
                 Html.div [
                     prop.className "notice error"

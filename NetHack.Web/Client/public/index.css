@@ -155,6 +155,10 @@ html, body {
    stays 1ch wide and the coordinates line up with the cells they label */
 .map-ruler { color: var(--dim); }
 
+/* The ruler's digits are .cell spans, to hold the column alignment, so they
+   need saying again here: chrome, dim as the gutters, not map content. */
+.map-ruler .cell { color: var(--dim); }
+
 .map-row { white-space: pre; }
 
 /* Frames the 80x21 grid, leaving the rulers outside it. Drawn as an overlay
@@ -193,24 +197,31 @@ html, body {
     text-align: left;
 }
 
+/* Terrain the game gave us no entity for. Lighter than --dim, which is meant
+   for chrome on the panels: this is the body of the map, read constantly, and
+   it sits on a background darker than any panel. */
 .cell {
     display: inline-block;
     width: 1ch;
     text-align: center;
-    color: var(--dim);
+    color: #9aa5b2;
 }
 
 .cell.ent { color: var(--text); }
 
-/* out of sight: recalled from an earlier visit, may be stale */
-.cell.faded { opacity: 0.42; }
+/* Out of sight: recalled from an earlier visit, may be stale. Enough of a drop
+   to separate it from what is lit, not so much that it stops being readable. */
+.cell.faded { opacity: 0.62; }
 
 /* the top item of a pile — more lies underneath */
 .cell.pile { text-decoration: underline dotted; text-underline-offset: 2px; }
 
+/* No meaning beyond "you are here" — just somewhere for the eye to land. The
+   glyph keeps the colour the game gave it; the ring is inset rather than an
+   outline so that it cannot bleed over the cells either side. */
 .cell.hero {
-    color: #ffffff !important;
-    background: var(--accent);
+    background: rgba(217, 164, 65, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(217, 164, 65, 0.5);
     border-radius: 2px;
     font-weight: 700;
 }
@@ -535,6 +546,26 @@ html, body {
 .button:hover { background: #e8b856; }
 
 .button:active { transform: translateY(1px); }
+
+/* The agent's turn is a round trip to a language model: seconds, not frames,
+   and the hero often moves a single square, so the result is easy to miss.
+   Wait the whole page, not just the button, as the pointer will not be over it
+   for most of that time. The universal selector beats the cursor every other
+   rule sets. */
+.app.busy,
+.app.busy * {
+    cursor: wait;
+}
+
+.button:disabled {
+    background: var(--panel-alt);
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+.button:disabled:hover { background: var(--panel-alt); }
+
+.button:disabled:active { transform: none; }
 
 /* ---------- states ---------- */
 
