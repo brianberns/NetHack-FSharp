@@ -183,7 +183,7 @@ module AgentAction =
             None
 
     /// Sets the message in the given state.
-    let private setMessage message state =
+    let setMessage message state =
         { state with
             Observation =
                 { state.Observation with

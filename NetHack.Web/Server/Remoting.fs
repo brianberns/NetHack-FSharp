@@ -93,6 +93,14 @@ module Api =
     let mutable private curNotes =
         Array.empty<Note>
 
+    /// Last time agent was invoked.
+    let mutable private lastAgentCallTime =
+        DateTime.MinValue
+
+    /// Minimum time between agent calls.
+    let private minAgentDelay =
+        TimeSpan.FromMinutes(1.0)
+
     /// Asynchronous lock.
     let private asyncLock = new AsyncLock()
 
@@ -103,6 +111,7 @@ module Api =
             return hiddenStates.Count
         }
 
+    /// Invokes agent to generate the next session state.
     let private generateNextState () =
         async {
                     // get latest agent action, if any
@@ -149,6 +158,8 @@ module Api =
                     AgentAction.updateNotes
                         hidden.AgentAction hidden.Notes
 
+                lastAgentCallTime <- DateTime.UtcNow
+
                 return Ok (HiddenState.toSessionState hidden)
 
             with exn ->
@@ -156,10 +167,32 @@ module Api =
                 return Error exn.Message
         }
 
+    /// Enforces a wait.
+    let private enforceWait waitSecs =
+        let msg =
+            let plural = if waitSecs = 1 then "" else "s"
+            $"Next turn available in {waitSecs} second{plural}."
+        if hiddenStates.Count = 0 then
+            Error msg
+        else
+            let hidden = Seq.last hiddenStates
+            let gameState =
+                AgentAction.setMessage msg hidden.GameState
+            { hidden with GameState = gameState }
+                |> HiddenState.toSessionState
+                |> Ok
+
     /// Gets the session state at the given index.
     let private getSessionState stateIdx =
         async {
             use! _ = asyncLock.LockAsync()
+
+                // prepare to compute wait time
+            let waitSecs =
+                lazy ((minAgentDelay
+                    - (DateTime.UtcNow - lastAgentCallTime))
+                    .TotalSeconds
+                    |> int)
 
                 // can return an existing state?
             if stateIdx < hiddenStates.Count then
@@ -170,6 +203,10 @@ module Api =
                 // game is over?
             elif curGameState.Over then
                 return Error "Game is over"
+
+                // must wait?
+            elif waitSecs.Value > 0 then
+                return enforceWait waitSecs.Value
 
                 // generate next state
             else
