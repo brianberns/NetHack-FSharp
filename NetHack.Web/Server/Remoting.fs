@@ -37,7 +37,7 @@ module Api =
         let config =
             ConfigurationBuilder()
                 .AddUserSecrets(Assembly.GetExecutingAssembly())
-                .AddEnvironmentVariables()
+                .AddJsonFile("secrets.json", optional = true)   // hosted deployment (e.g. Everleap)
                 .Build()
         Agent.create config model
 
