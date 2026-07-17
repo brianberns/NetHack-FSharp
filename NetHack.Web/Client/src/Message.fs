@@ -11,7 +11,8 @@ type InnerState =
 type State = Result<Option<InnerState>, string (*error message*)>
 
 type Message =
-    | Update of State
+    | SetState of State
+    | GetNextState
 
 module Message =
 
@@ -34,11 +35,33 @@ module Message =
                     | Error error ->
                         return Error error
             }
-        Cmd.OfAsync.perform get () Update
+        Cmd.OfAsync.perform get () SetState
 
     let init () =
         Ok None, getInitialState
 
+    let private getNextState stateIdx =
+        let get () =
+            async {
+                let idx = stateIdx + 1
+                match! Remoting.getGameState idx with
+                    | Ok sessionState ->
+                        let inner =
+                            {
+                                SessionState = sessionState
+                                StateIdx = idx
+                            }
+                        return Ok (Some inner)
+                    | Error error ->
+                        return Error error
+            }
+        Cmd.OfAsync.perform get () SetState
+
     let update msg (state : State) =
         match msg with
-            | Update state -> state, Cmd.none
+            | SetState state -> state, Cmd.none
+            | GetNextState ->
+                match state with
+                    | Ok (Some inner) ->
+                        state, getNextState inner.StateIdx
+                    | _ -> state, Cmd.none

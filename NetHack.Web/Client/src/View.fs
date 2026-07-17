@@ -634,7 +634,7 @@ module View =
 
     // ------------------------------------------------------------------ page
 
-    let private renderGameState (gameState : SessionState) =
+    let private renderGameState (gameState : SessionState) (dispatch : Message -> unit) =
         let obs = gameState.Observation
         Html.div [
             prop.className "app"
@@ -665,6 +665,16 @@ module View =
                         ]
                     ]
                 ]
+                Html.footer [
+                    prop.className "footer"
+                    prop.children [
+                        Html.button [
+                            prop.className "button"
+                            prop.onClick (fun _ -> dispatch GetNextState)
+                            prop.text "Next"
+                        ]
+                    ]
+                ]
             ]
         ]
 
@@ -676,7 +686,7 @@ module View =
                     prop.text "Entering the dungeon…"
                 ]
             | Ok (Some inner) ->
-                renderGameState inner.SessionState
+                renderGameState inner.SessionState dispatch
             | Error msg ->
                 Html.div [
                     prop.className "notice error"
