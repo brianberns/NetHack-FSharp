@@ -33,36 +33,6 @@ html, body {
     padding: 20px 16px 40px;
 }
 
-.banner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 10px 16px;
-    padding-bottom: 14px;
-    margin-bottom: 18px;
-    border-bottom: 1px solid var(--border);
-}
-
-.banner-mark {
-    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-}
-
-.banner-title {
-    font-size: 17px;
-    font-weight: 600;
-}
-
-.banner-sub {
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.banner-spacer { flex: 1; }
-
 /* The sidebar takes whatever the map does not need. The map is 86ch wide (80
    cells plus two 3ch gutters), which at a 9px advance is 774px, and 800px once
    the map-scroll padding and the panel border are counted; that leaves 330px
@@ -83,6 +53,20 @@ html, body {
     flex-direction: column;
     gap: 18px;
     min-width: 0;
+}
+
+/* Splits the space under the map. Both halves hold short panels, so pairing
+   them recovers the height they would waste stacked. The notes take the larger
+   share: their table has five columns to the decision's two. */
+.subcolumns {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 18px;
+    align-items: start;
+}
+
+@media (max-width: 940px) {
+    .subcolumns { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- panels ---------- */
@@ -355,6 +339,24 @@ html, body {
     font-size: 13px;
 }
 
+/* ---------- who ---------- */
+
+.who {
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.who-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.who-sub {
+    color: var(--muted);
+    font-size: 12px;
+}
+
 /* ---------- meters ---------- */
 
 .meter { margin-bottom: 10px; }
@@ -421,12 +423,17 @@ html, body {
     font-weight: 600;
 }
 
+/* Two label/value pairs per row: these values are all short, and one pair per
+   row left a stripe of blank space down the middle. */
 .facts {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 3px 12px;
+    grid-template-columns: repeat(2, max-content minmax(0, 1fr));
+    gap: 3px 8px;
     font-size: 13px;
 }
+
+/* space the pairs apart without opening a gap inside either one */
+.facts dt:nth-child(4n+3) { padding-left: 10px; }
 
 .facts dt { color: var(--muted); }
 
@@ -472,14 +479,6 @@ html, body {
     gap: 9px;
 }
 
-.row-glyph {
-    flex: none;
-    width: 1.6em;
-    text-align: center;
-    font-family: ui-monospace, Consolas, monospace;
-    font-weight: 700;
-}
-
 .row-key {
     flex: none;
     color: var(--accent);
@@ -487,46 +486,12 @@ html, body {
     font-weight: 700;
 }
 
-.row-note {
-    margin-left: auto;
-    padding-left: 8px;
-    flex: none;
-    color: var(--dim);
-    font-size: 11px;
-    font-family: ui-monospace, Consolas, monospace;
-}
-
-.legend {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 4px 10px;
-    font-size: 12px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-}
-
-.legend-sym {
-    flex: none;
-    width: 1.4em;
-    text-align: center;
-    font-family: ui-monospace, Consolas, monospace;
-    color: var(--text);
-}
-
-.legend-name { color: var(--muted); }
-
 /* ---------- footer ---------- */
 
+/* the column's own gap sets it off now, so no rule above it */
 .footer {
     display: flex;
     justify-content: center;
-    padding-top: 20px;
-    margin-top: 18px;
-    border-top: 1px solid var(--border);
 }
 
 .button {

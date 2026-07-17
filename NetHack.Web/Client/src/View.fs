@@ -36,6 +36,11 @@ module View =
             |> Map.tryFind name
             |> Option.defaultValue "#c9d1d9"
 
+    /// NetHack reports race and gender in lower case, unlike role.
+    let private capitalize (str : string) =
+        if str.Length = 0 then str
+        else string (Char.ToUpper str[0]) + str[1..]
+
     let private hungerText = function
         | Satiated  -> "Satiated"
         | NotHungry -> "Not hungry"
@@ -96,34 +101,6 @@ module View =
             ]
         ]
 
-    // ---------------------------------------------------------------- banner
-
-    let private renderBanner (obs : Observation) =
-        let ch = obs.Character
-        let st = obs.Status
-        Html.header [
-            prop.className "banner"
-            prop.children [
-                Html.span [
-                    prop.className "banner-mark"
-                    prop.text "NETHACK"
-                ]
-                Html.span [
-                    prop.className "banner-title"
-                    prop.text st.Title
-                ]
-                Html.span [
-                    prop.className "banner-sub"
-                    prop.text $"{ch.Gender} {ch.Race} {ch.Role} · {st.Alignment}"
-                ]
-                Html.span [ prop.className "banner-spacer" ]
-                Html.span [
-                    prop.className "banner-sub"
-                    prop.text $"{st.Dungeon} · level {st.DungeonLevel} · turn {st.Turns}"
-                ]
-            ]
-        ]
-
     // -------------------------------------------------------------- messages
 
     let private renderMessages (obs : Observation) =
@@ -134,7 +111,7 @@ module View =
                     if List.isEmpty obs.Messages then
                         Html.div [
                             prop.className "empty"
-                            prop.text "Nothing to report."
+                            prop.text "None this turn."
                         ]
                     else
                         Html.div [
@@ -215,44 +192,49 @@ module View =
             obs.Entities
                 |> List.map (fun ent -> (ent.Pos.X, ent.Pos.Y), ent)
                 |> Map.ofList
-        panel "Dungeon" (
-            Html.div [
-                prop.className "map-scroll"
-                prop.children [
-                    Html.div [
-                        prop.className "map"
-                        prop.children [
-                            yield! renderRulers obs.Width
-                            Html.div [
-                                prop.className "map-grid"
-                                prop.children [
-                                    for y, row in List.indexed obs.Rows do
-                                        Html.div [
-                                            prop.key y
-                                            prop.className "map-row"
-                                            prop.children [
-                                                Html.span [
-                                                    prop.className "map-gutter"
-                                                    prop.text (string y)
-                                                ]
-                                                // pad short rows out to the full width, or
-                                                // the right-hand gutter would not line up
-                                                for x in 0 .. obs.Width - 1 do
-                                                    let ch = if x < row.Length then row[x] else ' '
-                                                    renderCell obs.Legend x (Map.tryFind (x, y) entities) ch
-                                                Html.span [
-                                                    prop.className "map-gutter right"
-                                                    prop.text (string y)
+        // no panel head: a map of the dungeon needs no announcing
+        Html.div [
+            prop.className "panel"
+            prop.children [
+                Html.div [
+                    prop.className "map-scroll"
+                    prop.children [
+                        Html.div [
+                            prop.className "map"
+                            prop.children [
+                                yield! renderRulers obs.Width
+                                Html.div [
+                                    prop.className "map-grid"
+                                    prop.children [
+                                        for y, row in List.indexed obs.Rows do
+                                            Html.div [
+                                                prop.key y
+                                                prop.className "map-row"
+                                                prop.children [
+                                                    Html.span [
+                                                        prop.className "map-gutter"
+                                                        prop.text (string y)
+                                                    ]
+                                                    // pad short rows out to the full width, or
+                                                    // the right-hand gutter would not line up
+                                                    for x in 0 .. obs.Width - 1 do
+                                                        let ch = if x < row.Length then row[x] else ' '
+                                                        renderCell obs.Legend x (Map.tryFind (x, y) entities) ch
+                                                    Html.span [
+                                                        prop.className "map-gutter right"
+                                                        prop.text (string y)
+                                                    ]
                                                 ]
                                             ]
-                                        ]
+                                    ]
                                 ]
+                                yield! renderRulers obs.Width
                             ]
-                            yield! renderRulers obs.Width
                         ]
                     ]
                 ]
-            ])
+            ]
+        ]
 
     // ---------------------------------------------------------------- prompt
 
@@ -275,47 +257,52 @@ module View =
 
     let private renderPrompt (pending : Prompt) =
         let kind, question = promptParts pending
-        panel "Waiting for" (
-            Html.div [
-                prop.className "panel-body"
-                prop.children [
-                    Html.div [
-                        prop.children [
-                            Html.span [
-                                prop.className (
-                                    match pending with
-                                        | GameOver _ -> "prompt-kind over"
-                                        | _ -> "prompt-kind")
-                                prop.text kind
-                            ]
-                            Html.span [
-                                prop.className "prompt-text"
-                                prop.text question
-                            ]
-                        ]
-                    ]
-                    match pending with
-                        | Menu (_, _, items) ->
-                            Html.ul [
-                                prop.className "menu"
-                                prop.children [
-                                    for item in items do
-                                        Html.li [
-                                            prop.key (string item.Key)
-                                            prop.className (if item.Selected then "selected" else "")
-                                            prop.children [
-                                                Html.span [
-                                                    prop.className "menu-key"
-                                                    prop.text (string item.Key)
-                                                ]
-                                                Html.span [ prop.text item.Text ]
-                                            ]
-                                        ]
+        // no panel head: the kind chip already says what is being waited on
+        Html.div [
+            prop.className "panel"
+            prop.children [
+                Html.div [
+                    prop.className "panel-body"
+                    prop.children [
+                        Html.div [
+                            prop.children [
+                                Html.span [
+                                    prop.className (
+                                        match pending with
+                                            | GameOver _ -> "prompt-kind over"
+                                            | _ -> "prompt-kind")
+                                    prop.text kind
+                                ]
+                                Html.span [
+                                    prop.className "prompt-text"
+                                    prop.text question
                                 ]
                             ]
-                        | _ -> ()
+                        ]
+                        match pending with
+                            | Menu (_, _, items) ->
+                                Html.ul [
+                                    prop.className "menu"
+                                    prop.children [
+                                        for item in items do
+                                            Html.li [
+                                                prop.key (string item.Key)
+                                                prop.className (if item.Selected then "selected" else "")
+                                                prop.children [
+                                                    Html.span [
+                                                        prop.className "menu-key"
+                                                        prop.text (string item.Key)
+                                                    ]
+                                                    Html.span [ prop.text item.Text ]
+                                                ]
+                                            ]
+                                    ]
+                                ]
+                            | _ -> ()
+                    ]
                 ]
-            ])
+            ]
+        ]
 
     // ----------------------------------------------------------------- notes
 
@@ -352,7 +339,7 @@ module View =
     let private renderNotes (session : SessionState) =
         let relevant = Set.ofArray session.RelevantNotes
         let toDelete = Set.ofArray session.NotesToDelete
-        panel "Notes" (
+        panel "Agent's Notes" (
             Html.div [
                 prop.className "panel-body scroll"
                 prop.children [
@@ -392,7 +379,7 @@ module View =
     /// What the player did this turn, and what they expected it to do. The
     /// prediction is worth reading back against the next turn's messages.
     let private renderAction (session : SessionState) =
-        panel "Action" (
+        panel "Agent's Decision" (
             Html.div [
                 prop.className "panel-body"
                 prop.children [
@@ -402,7 +389,7 @@ module View =
                             // flat, so that the labels share a grid column and
                             // line up with each other
                             for label, text in
-                                [ "Taken", session.Action
+                                [ "Action", session.Action
                                   "Expected", session.Prediction ] do
                                 Html.div [
                                     prop.key label
@@ -457,6 +444,7 @@ module View =
         ]
 
     let private renderVitals (obs : Observation) =
+        let ch = obs.Character
         let st = obs.Status
         let hpClass =
             let frac = if st.HPMax > 0 then float st.HP / float st.HPMax else 0.0
@@ -464,10 +452,16 @@ module View =
             elif frac > 0.25 then "hp-warn"
             else "hp-bad"
         let facts =
-            [ "AC", string st.ArmorClass
+            [ "Role", capitalize ch.Role
+              "Race", capitalize ch.Race
+              "Gender", capitalize ch.Gender
+              "Align", capitalize st.Alignment
+              "AC", string st.ArmorClass
               "Exp", $"{st.ExpLevel} ({st.Experience |> Option.defaultValue 0L})"
               "Gold", $"${st.Gold}"
+              "Level", string st.DungeonLevel
               "Depth", string st.Depth
+              "Turn", string st.Turns
               "Position", $"({obs.Hero.X}, {obs.Hero.Y})"
               "Hunger", hungerText st.Hunger
               match st.Encumbrance with
@@ -480,6 +474,21 @@ module View =
             Html.div [
                 prop.className "panel-body"
                 prop.children [
+                    Html.div [
+                        prop.className "who"
+                        prop.children [
+                            Html.div [ prop.className "who-title"; prop.text st.Title ]
+                            // The name arrives blank at the start of the game,
+                            // and is too long for the facts grid regardless, so
+                            // it gets a full-width line of its own when there is
+                            // one to show.
+                            if not (String.IsNullOrWhiteSpace st.Dungeon) then
+                                Html.div [
+                                    prop.className "who-sub"
+                                    prop.text st.Dungeon
+                                ]
+                        ]
+                    ]
                     meter "HP" st.HP st.HPMax hpClass
                     meter "POWER" st.Power st.PowerMax "pw"
                     Html.div [
@@ -556,82 +565,6 @@ module View =
                 ]
             ])
 
-    // -------------------------------------------------------------- entities
-
-    /// Everything decoded on the map bar the hero, in view first, since the
-    /// out-of-view ones are only recalled and may have moved on.
-    let private renderEntities (entities : Entity list) =
-        let interesting =
-            entities
-                |> List.filter (fun ent ->
-                    ent.Kind <> HeroSelf && ent.Kind <> Unexplored)
-                |> List.sortBy (fun ent ->
-                    (not ent.InView), ent.Name |> Option.defaultValue "~")
-        panel "On the map" (
-            Html.div [
-                prop.className "panel-body scroll"
-                prop.children [
-                    if List.isEmpty interesting then
-                        Html.div [ prop.className "empty"; prop.text "Nothing of note." ]
-                    else
-                        Html.div [
-                            prop.className "rows"
-                            prop.children [
-                                for ent in interesting do
-                                    Html.div [
-                                        prop.key $"{ent.Pos.X},{ent.Pos.Y}"
-                                        prop.className (if ent.InView then "row-item" else "row-item faded")
-                                        prop.children [
-                                            Html.span [
-                                                prop.className "row-glyph"
-                                                prop.style [ style.color (colorOf ent.Color) ]
-                                                prop.text (string ent.Symbol)
-                                            ]
-                                            Html.span [
-                                                prop.text (
-                                                    match ent.Name with
-                                                        | Some name when ent.Pile -> $"{name} (pile)"
-                                                        | Some name -> name
-                                                        | None -> kindText ent.Kind)
-                                            ]
-                                            Html.span [
-                                                prop.className "row-note"
-                                                prop.text $"{ent.Pos.X},{ent.Pos.Y}"
-                                            ]
-                                        ]
-                                    ]
-                            ]
-                        ]
-                ]
-            ])
-
-    // ---------------------------------------------------------------- legend
-
-    let private renderLegend (legend : Map<string, string>) =
-        panel "Terrain" (
-            Html.div [
-                prop.className "panel-body scroll"
-                prop.children [
-                    if Map.isEmpty legend then
-                        Html.div [ prop.className "empty"; prop.text "Nothing mapped yet." ]
-                    else
-                        Html.div [
-                            prop.className "legend"
-                            prop.children [
-                                for symbol, name in Map.toList legend do
-                                    Html.div [
-                                        prop.key symbol
-                                        prop.className "legend-item"
-                                        prop.children [
-                                            Html.span [ prop.className "legend-sym"; prop.text symbol ]
-                                            Html.span [ prop.className "legend-name"; prop.text name ]
-                                        ]
-                                    ]
-                            ]
-                        ]
-                ]
-            ])
-
     // ------------------------------------------------------------------ page
 
     let private renderGameState (gameState : SessionState) (dispatch : Message -> unit) =
@@ -639,7 +572,6 @@ module View =
         Html.div [
             prop.className "app"
             prop.children [
-                renderBanner obs
                 Html.div [
                     prop.className "layout"
                     prop.children [
@@ -648,9 +580,35 @@ module View =
                             prop.children [
                                 renderMessages obs
                                 renderMap obs
-                                renderPrompt gameState.Pending
-                                renderNotes gameState
-                                renderAction gameState
+                                Html.div [
+                                    prop.className "subcolumns"
+                                    prop.children [
+                                        Html.div [
+                                            prop.className "column"
+                                            prop.children [
+                                                renderNotes gameState
+                                            ]
+                                        ]
+                                        Html.div [
+                                            prop.className "column"
+                                            prop.children [
+                                                renderPrompt gameState.Pending
+                                                renderAction gameState
+                                                Html.footer [
+                                                    prop.className "footer"
+                                                    prop.children [
+                                                        Html.button [
+                                                            prop.className "button"
+                                                            prop.onClick (fun _ ->
+                                                                dispatch GetNextState)
+                                                            prop.text "Next"
+                                                        ]
+                                                    ]
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
                             ]
                         ]
                         Html.div [
@@ -659,19 +617,7 @@ module View =
                                 renderVitals obs
                                 renderConditions obs.Status.Conditions
                                 renderInventory obs.Inventory
-                                renderEntities obs.Entities
-                                renderLegend obs.Legend
                             ]
-                        ]
-                    ]
-                ]
-                Html.footer [
-                    prop.className "footer"
-                    prop.children [
-                        Html.button [
-                            prop.className "button"
-                            prop.onClick (fun _ -> dispatch GetNextState)
-                            prop.text "Next"
                         ]
                     ]
                 ]
