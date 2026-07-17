@@ -368,5 +368,7 @@ FodyWeavers.xsd
 *.fs.js.map
 fable_modules/
 bundle.js
+bundle.js.map
+bundle.js.LICENSE.txt
 temp/**
 node_modules/
