@@ -96,14 +96,68 @@ module Api =
     /// Asynchronous lock.
     let private asyncLock = new AsyncLock()
 
-    /// Answers the current number of steps taken.
+    /// Gets the current number of session states.
     let private getStateCount () =
         async {
             use! _ = asyncLock.LockAsync()
             return hiddenStates.Count
         }
 
-    /// Gets the session state at the given step index.
+    let private generateNextState () =
+        async {
+                    // get latest agent action, if any
+            let lastActionOpt =
+                hiddenStates
+                    |> Seq.tryLast
+                    |> Option.map _.AgentAction
+
+                // get prompt for the next state
+            let prompt =
+                Prompt.getPrompt curGameState lastActionOpt curNotes
+            try
+                    // request action from agent
+                let! aa =
+                    Agent.getResultAsync<AgentAction> prompt agent
+
+                    // save the current game state and the agent's action in that state
+                let hidden =
+                    {
+                        GameState = curGameState
+                        Notes = curNotes
+                        AgentAction = aa
+                    }
+                hiddenStates.Add(hidden)
+
+                (*
+                 * Apply the agent's action in NetHack.
+                 *
+                 * Note that this is currently unreversible, so we do
+                 * it only after the agent has successfully responded.
+                 * This means that the server generates and holds the
+                 * next NetHack game state while the client is still
+                 * looking at the old game state and the agent's
+                 * response to it. In short, all this stateful data is
+                 * an off-by-one error waiting to happen.
+                 *)
+                curGameState <-
+                    hidden.AgentAction
+                        |> AgentAction.toAction
+                        |> engine.Step curGameState
+
+                    // update the agent's database of notes
+                curNotes <-
+                    assert(curNotes = hidden.Notes)
+                    AgentAction.updateNotes
+                        hidden.AgentAction hidden.Notes
+
+                return Ok (HiddenState.toSessionState hidden)
+
+            with exn ->
+                printfn $"{exn.Message}"
+                return Error exn.Message
+        }
+
+    /// Gets the session state at the given index.
     let private getSessionState stateIdx =
         async {
             use! _ = asyncLock.LockAsync()
@@ -114,46 +168,13 @@ module Api =
                 let hidden = hiddenStates[stateIdx]
                 return Ok (HiddenState.toSessionState hidden)
 
+                // game is over?
+            elif curGameState.Over then
+                return Error "Game is over"
+
                 // generate next state
             else
-                    // get prompt for the next state
-                let prompt =
-                    let prevActionOpt =
-                        hiddenStates
-                            |> Seq.tryLast
-                            |> Option.map _.AgentAction
-                    Prompt.getPrompt curGameState prevActionOpt curNotes
-                try
-                        // request action from agent
-                    let! aa =
-                        Agent.getResultAsync<AgentAction> prompt agent
-
-                        // save the current game state and the agent's action in that state
-                    let hidden =
-                        {
-                            GameState = curGameState
-                            Notes = curNotes
-                            AgentAction = aa
-                        }
-                    hiddenStates.Add(hidden)
-
-                        // apply the agent's action in NetHack
-                    curGameState <-
-                        hidden.AgentAction
-                            |> AgentAction.toAction
-                            |> engine.Step curGameState
-
-                        // update the agent's database of notes
-                    curNotes <-
-                        assert(curNotes = hidden.Notes)
-                        AgentAction.updateNotes
-                            hidden.AgentAction hidden.Notes
-
-                    return Ok (HiddenState.toSessionState hidden)
-
-                with exn ->
-                    printfn $"{exn.Message}"
-                    return Error exn.Message
+                return! generateNextState ()
         }
 
     /// NetHack API.

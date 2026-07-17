@@ -36,7 +36,7 @@ type SessionState =
 /// Client-server NetHack web API.
 type INetHackApi =
     {
-        /// Gets the current number of game steps.
+        /// Gets the current number of game states.
         GetStateCount : unit -> Async<int>
 
         /// Gets the session state at the given 0-based index.

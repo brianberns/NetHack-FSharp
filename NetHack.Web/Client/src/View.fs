@@ -675,8 +675,8 @@ module View =
                     prop.className "notice"
                     prop.text "Entering the dungeon…"
                 ]
-            | Ok (Some gameState) ->
-                renderGameState gameState
+            | Ok (Some inner) ->
+                renderGameState inner.SessionState
             | Error msg ->
                 Html.div [
                     prop.className "notice error"

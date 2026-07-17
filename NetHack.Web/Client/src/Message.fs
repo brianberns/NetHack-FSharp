@@ -1,27 +1,43 @@
 namespace NetHack.Web
 
-open System
-open Fable.Core
 open Elmish
 
-type State = Result<Option<SessionState>, string>
+type InnerState =
+    {
+        SessionState : SessionState
+        StateIdx : int
+    }
+
+type State = Result<Option<InnerState>, string (*error message*)>
 
 type Message =
     | Update of State
 
 module Message =
 
-    let private getGameState =
+    let private getInitialState =
         let get () =
             async {
-                match! Remoting.getGameState () with
-                    | Ok gameState -> return Ok (Some gameState)
-                    | Error error -> return Error error
+                match! Remoting.getStateCount () with
+                    | Ok nStates ->
+                        let idx = max (nStates - 1) 0
+                        match! Remoting.getGameState idx with
+                            | Ok sessionState ->
+                                let inner =
+                                    {
+                                        SessionState = sessionState
+                                        StateIdx = idx
+                                    }
+                                return Ok (Some inner)
+                            | Error error ->
+                                return Error error
+                    | Error error ->
+                        return Error error
             }
         Cmd.OfAsync.perform get () Update
 
     let init () =
-        Ok None, getGameState
+        Ok None, getInitialState
 
     let update msg (state : State) =
         match msg with

@@ -15,9 +15,21 @@ module Remoting =
             |> Remoting.withRouteBuilder routeBuilder
             |> Remoting.buildProxy<INetHackApi>
 
-    let getGameState () =
+    /// Gets the current number of game states.
+    let getStateCount () =
         async {
-            match! Async.Catch(api.GetSessionState 0) with
+            match! Async.Catch(api.GetStateCount ()) with
+                | Choice1Of2 nStates ->
+                    return Ok nStates
+                | Choice2Of2 exn ->
+                    console.log(exn.Message)
+                    return Error exn.Message
+        }
+
+    /// Gets the session state at the given 0-based index.
+    let getGameState stateIdx =
+        async {
+            match! Async.Catch(api.GetSessionState stateIdx) with
                 | Choice1Of2 (Ok state) ->
                     return Ok state
                 | Choice1Of2 (Error msg) ->
