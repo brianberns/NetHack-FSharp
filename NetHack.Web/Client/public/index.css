@@ -316,10 +316,14 @@ html, body {
 /* One grid for both rows, so the labels share a column and stay aligned. The
    column takes its width from the widest of them: a fixed width would have to
    guess, as these are proportional caps and ch measures a digit. */
+/* Aligned by the tops of the rows rather than by baseline: the prediction box
+   below scrolls, and a scrolling box reports its own bottom edge as its
+   baseline, which would drop the label away from the line it names. The pinned
+   line-heights bring the label and its text level instead. */
 .acts {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
-    align-items: baseline;
+    align-items: start;
     column-gap: 12px;
 }
 
@@ -337,11 +341,27 @@ html, body {
     text-transform: uppercase;
     color: var(--muted);
     white-space: nowrap;
+    line-height: 18px;
 }
 
 .act-text {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
     font-size: 13px;
+    line-height: 18px;
+}
+
+/* Matches the note text: the body face, as this is a sentence.
+
+   Held at five lines however long the sentence runs, so that the button below
+   stays where the eye left it; a verbose agent needs the room. Sized
+   content-box, as the padding-top the rule above adds must not eat into the
+   five lines; the height is theirs alone. */
+.act-prose {
+    font-size: 13px;
+    line-height: 18px;
+    box-sizing: content-box;
+    height: 90px;
+    overflow-y: auto;
 }
 
 /* ---------- who ---------- */

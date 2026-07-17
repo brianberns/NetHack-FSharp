@@ -321,9 +321,21 @@ module View =
             ]
         ]
 
+    /// The age at which a note is dropped. Mirrors the rule in
+    /// AgentAction.updateNotes, which is where it is actually enforced.
+    let private noteMaxAge = 10
+
+    /// Dims a note as it nears the age at which it will be dropped. The floor
+    /// is set well short of illegible: this is a hint about what is on its way
+    /// out, not a reason to stop reading it.
+    let private noteOpacity age =
+        let t = float (min age noteMaxAge) / float noteMaxAge
+        1.0 - (0.4 * t)
+
     let private noteRow key id (note : Note) relevant delete =
         Html.tr [
             prop.key (key : string)
+            prop.style [ style.opacity (noteOpacity note.Age) ]
             prop.children [
                 Html.td [ prop.className "note-id"; prop.text (id : string) ]
                 Html.td [ prop.className "note-text"; prop.text note.Text ]
@@ -388,9 +400,11 @@ module View =
                         prop.children [
                             // flat, so that the labels share a grid column and
                             // line up with each other
-                            for label, text in
-                                [ "Action", session.Action
-                                  "Expected", session.Prediction ] do
+                            for label, text, className in
+                                [ "Action", session.Action, "act-text"
+                                  // a sentence the agent wrote, so it reads as
+                                  // the notes do rather than as game text
+                                  "Expected", session.Prediction, "act-prose" ] do
                                 Html.div [
                                     prop.key label
                                     prop.className "act-label"
@@ -398,7 +412,7 @@ module View =
                                 ]
                                 Html.div [
                                     prop.key (label + "-v")
-                                    prop.className "act-text"
+                                    prop.className className
                                     prop.text text
                                 ]
                         ]
