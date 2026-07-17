@@ -73,26 +73,24 @@ module Api =
             }
 
     /// Tries to get the agent's action in the given state.
-    let private tryGetAgentAction state prevActionOpt notes =
+    let private tryGetAgentAction gameState prevActionOpt notes =
         async {
             try
                 let prompt =
-                    Prompt.getPrompt state prevActionOpt notes
+                    Prompt.getPrompt gameState prevActionOpt notes
                 let! aa =
                     Agent.getResultAsync<AgentAction> prompt agent
-                return Ok aa
+                return Ok {
+                    GameState = gameState
+                    Notes = notes
+                    AgentAction = aa
+                }
 
                 (*
                     // update game state and notes
                 let state =
                     engine.Step state (AgentAction.toAction aa)
                 let notes = AgentAction.updateNotes aa notes
-
-                return Ok {|   // not a hidden state: it contains the state *after* the action
-                    AgentAction = aa
-                    State = state
-                    Notes = notes
-                |}
                 *)
 
             with exn ->
@@ -115,60 +113,46 @@ module Api =
             return hiddenStates.Count
         }
 
+    module Option =
+
+        let unzip = function
+            | Some (a, b) -> Some a, Some b
+            | None -> None, None
+
     let private getSessionState stateIdx =
         async {
             use! _ = asyncLock.LockAsync()
 
-            if hiddenStates.Count = 0 then
-                let notes = Array.empty
-                let! result =
-                    tryGetAgentAction curGameState None notes
-                match result with
-                    | Ok aa ->
-                        let hidden =
-                            {
-                                GameState = curGameState
-                                Notes = notes
-                                AgentAction = aa
-                            }
-                        hiddenStates.Add(hidden)
-                        let sessionState = HiddenState.toSessionState hidden
-                        return Ok sessionState
-                    | Error msg ->
-                        return Error msg
+                // can return an existing state?
+            if stateIdx < hiddenStates.Count then
+                let stateIdx = max stateIdx 0
+                let hidden = hiddenStates[stateIdx]
+                let sessionState = HiddenState.toSessionState hidden
+                return Ok sessionState
 
-            elif stateIdx >= hiddenStates.Count then
-                let hidden = Seq.last hiddenStates
-                let notes = hidden.Notes
+                // generate next statee
+            else
+                let prevActionOpt, notesOpt =
+                    hiddenStates
+                        |> Seq.tryLast
+                        |> Option.map (fun hidden ->
+                            hidden.AgentAction, hidden.Notes)
+                        |> Option.unzip
+                let notes =
+                    Option.defaultValue Array.empty notesOpt
                 let! result =
                     tryGetAgentAction
                         curGameState
-                        (Some hidden.AgentAction)
+                        prevActionOpt
                         notes
                 match result with
-                    | Ok aa ->
-                        let hidden =
-                            {
-                                GameState = curGameState
-                                Notes = notes
-                                AgentAction = aa
-                            }
+                    | Ok hidden ->
                         hiddenStates.Add(hidden)
-                        let sessionState = HiddenState.toSessionState hidden
+                        let sessionState =
+                            HiddenState.toSessionState hidden
                         return Ok sessionState
                     | Error msg ->
                         return Error msg
-
-                // can return an existing state
-            else
-                let hidden =
-                    let stateIdx =
-                        stateIdx
-                            |> min (hiddenStates.Count - 1)
-                            |> max 0
-                    hiddenStates[stateIdx]
-                let sessionState = HiddenState.toSessionState hidden
-                return Ok sessionState
         }
 
     /// NetHack API.
