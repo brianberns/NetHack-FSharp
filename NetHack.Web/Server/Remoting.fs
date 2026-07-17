@@ -32,10 +32,11 @@ module Api =
     /// LLM driving the agent.
     let private model = OpenRouter.model
 
-    /// NetHack-playing agent.
-    let private agent =
+    /// Creates a NetHack-playing agent.
+    let private createAgent dir =
         let config =
             ConfigurationBuilder()
+                .SetBasePath(dir)                               // web part's own directory
                 .AddUserSecrets(Assembly.GetExecutingAssembly())
                 .AddJsonFile("secrets.json", optional = true)   // hosted deployment (e.g. Everleap)
                 .Build()
@@ -112,7 +113,7 @@ module Api =
         }
 
     /// Invokes agent to generate the next session state.
-    let private generateNextState () =
+    let private generateNextState agent =
         async {
                     // get latest agent action, if any
             let lastActionOpt =
@@ -183,7 +184,7 @@ module Api =
                 |> Ok
 
     /// Gets the session state at the given index.
-    let private getSessionState stateIdx =
+    let private getSessionState agent stateIdx =
         async {
             use! _ = asyncLock.LockAsync()
 
@@ -210,14 +211,15 @@ module Api =
 
                 // generate next state
             else
-                return! generateNextState ()
+                return! generateNextState agent
         }
 
     /// NetHack API.
-    let netHackApi =
+    let netHackApi dir =
+        let agent = createAgent dir
         {
             GetStateCount = getStateCount
-            GetSessionState = getSessionState
+            GetSessionState = getSessionState agent
         }
 
 module Remoting =
@@ -225,5 +227,5 @@ module Remoting =
     /// Build API.
     let webPart (dir : string) =
         Remoting.createApi()
-            |> Remoting.fromValue Api.netHackApi
+            |> Remoting.fromValue (Api.netHackApi dir)
             |> Remoting.buildWebPart
