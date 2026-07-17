@@ -639,6 +639,13 @@ module View =
                         ]
                     ]
                 ]
+                Html.a [
+                    prop.className "colophon"
+                    prop.href "https://github.com/brianberns/NetHack-FSharp"
+                    prop.target "_blank"
+                    prop.rel "noopener noreferrer"
+                    prop.text "Source code and documentation"
+                ]
             ]
         ]
 

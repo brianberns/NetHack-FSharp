@@ -567,6 +567,23 @@ html, body {
 
 .button:disabled:active { transform: none; }
 
+/* ---------- colophon ---------- */
+
+/* A quiet link out to the project, centred under everything. */
+.colophon {
+    display: block;
+    margin-top: 18px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.colophon:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
 /* ---------- states ---------- */
 
 .notice {
