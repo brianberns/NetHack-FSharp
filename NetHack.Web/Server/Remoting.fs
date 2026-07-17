@@ -41,9 +41,14 @@ module Api =
 
     type private HiddenState =
         {
+            /// Game state prior to agent's action.
             GameState : GameState
-            AgentAction : AgentAction
+
+            /// Agent's notes prior to this game state.
             Notes : Note[]
+
+            /// Agent's response to this game state.
+            AgentAction : AgentAction
         }
 
     module private HiddenState =
@@ -67,25 +72,28 @@ module Api =
                 Prediction = hidden.AgentAction.Prediction
             }
 
-    let private act state prevActionOpt notes =
+    /// Tries to get the agent's action in the given state.
+    let private tryGetAgentAction state prevActionOpt notes =
         async {
             try
-                    // get agent's action
+                let prompt =
+                    Prompt.getPrompt state prevActionOpt notes
                 let! aa =
-                    let prompt =
-                        Prompt.getPrompt state prevActionOpt notes
                     Agent.getResultAsync<AgentAction> prompt agent
+                return Ok aa
 
+                (*
                     // update game state and notes
                 let state =
                     engine.Step state (AgentAction.toAction aa)
                 let notes = AgentAction.updateNotes aa notes
 
-                return Ok {
-                    GameState = state
+                return Ok {|   // not a hidden state: it contains the state *after* the action
                     AgentAction = aa
+                    State = state
                     Notes = notes
-                }
+                |}
+                *)
 
             with exn ->
                 printfn $"{exn.Message}"
@@ -93,6 +101,11 @@ module Api =
         }
 
     let mutable private hiddenStates = ResizeArray<HiddenState>()
+
+    let mutable private curGameState =
+        { NewGame.defaults with
+            Name = Some model.Name }
+            |> engine.Start
 
     let private asyncLock = new AsyncLock()
 
@@ -106,29 +119,40 @@ module Api =
         async {
             use! _ = asyncLock.LockAsync()
 
-                // need to take an action?
-            if stateIdx >= hiddenStates.Count then
+            if hiddenStates.Count = 0 then
+                let notes = Array.empty
+                let! result =
+                    tryGetAgentAction curGameState None notes
+                match result with
+                    | Ok aa ->
+                        let hidden =
+                            {
+                                GameState = curGameState
+                                Notes = notes
+                                AgentAction = aa
+                            }
+                        hiddenStates.Add(hidden)
+                        let sessionState = HiddenState.toSessionState hidden
+                        return Ok sessionState
+                    | Error msg ->
+                        return Error msg
 
-                let gameState, prevActionOpt, notes =
-
-                        // start a new game?
-                    if hiddenStates.Count = 0 then
-                        let gameState =
-                            { NewGame.defaults with
-                                Name = Some model.Name }
-                                |> engine.Start
-                        gameState, None, Array.empty
-
-                        // use latest state
-                    else
-                        let hidden = hiddenStates[hiddenStates.Count - 1]
-                        hidden.GameState,
-                        Some hidden.AgentAction,
-                        hidden.Notes
-
-                    // get agent's action
-                match! act gameState prevActionOpt notes with
-                    | Ok hidden ->
+            elif stateIdx >= hiddenStates.Count then
+                let hidden = Seq.last hiddenStates
+                let notes = hidden.Notes
+                let! result =
+                    tryGetAgentAction
+                        curGameState
+                        (Some hidden.AgentAction)
+                        notes
+                match result with
+                    | Ok aa ->
+                        let hidden =
+                            {
+                                GameState = curGameState
+                                Notes = notes
+                                AgentAction = aa
+                            }
                         hiddenStates.Add(hidden)
                         let sessionState = HiddenState.toSessionState hidden
                         return Ok sessionState
