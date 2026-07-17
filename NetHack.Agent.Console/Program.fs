@@ -36,8 +36,7 @@ module Program =
                 View.render state notes aa
 
                     // update game state and notes
-                let state =
-                    engine.Step state (AgentAction.toAction aa)
+                let state = AgentAction.step engine state aa
                 let notes = AgentAction.updateNotes aa notes
 
                     // play another turn?

@@ -3,6 +3,7 @@ namespace NetHack.Agent
 open System
 open System.ComponentModel
 open System.Text.Json.Serialization
+open System.Text.RegularExpressions
 
 open NetHack.Api
 
@@ -18,7 +19,9 @@ type ActionType =
     | Select = 6
     | Proceed = 7
     | Extended = 8
-    | Cancel = 9
+    | SymAbs = 9
+    | SymRel = 10
+    | Cancel = 11
 
 /// Action DTO the model returns each turn. The order of these fields
 /// drives the model to think first and then act.
@@ -48,13 +51,15 @@ type AgentAction =
         Type : ActionType
 
         [<Description("Argument for the action. \
-            Move/Run: one of N|S|E|W|NE|NW|SE|SW. \
-            Key/Answer: a single character. \
-            Text: a line of text. \
-            Number: an integer. \
-            Select: the menu letters (e.g. 'a' or 'ac'). \
-            Extended: an extended command name (e.g. loot, pray, etc.). \
-            Proceed/Cancel: ignored.")>]
+            Move/Run: One of N|S|E|W|NE|NW|SE|SW. \
+            Key/Answer: A single character. \
+            Text: A line of text. \
+            Number: An integer. \
+            Select: The menu letters (e.g. 'a' or 'ac'). \
+            Extended: An extended command name (e.g. loot, pray, etc.). \
+            SymAbs: Absolute (x,y) coordinates. \
+            SymRel: (x,y) coordinates relative to hero. \
+            Proceed/Cancel: Ignored.")>]
         [<JsonPropertyName("Value")>]
         _Value : string
 
@@ -112,7 +117,7 @@ module AgentAction =
 
     /// Converts the model's action into a strongly-typed NetHack.Api
     /// action.
-    let toAction (aa : AgentAction) =
+    let private toAction (aa : AgentAction) =
 
         let value =
             (if isNull aa.Value then ""
@@ -165,6 +170,48 @@ module AgentAction =
 
             | _ ->
                 Proceed
+
+    /// Parses "(x,y)" coordinates.
+    let private tryParseCoordinates text =
+        let pattern = @"^\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*\)?\s*$"
+        let m = Regex.Match(text, pattern)
+        if m.Success then
+            let x = int m.Groups.[1].Value
+            let y = int m.Groups.[2].Value
+            Some (x, y)
+        else
+            None
+
+    /// Sets the message in the given state.
+    let private setMessage message state =
+        { state with
+            Observation =
+                { state.Observation with
+                    Messages = [message] } }
+
+    /// Gets a symbol on the map.
+    let private getSymbol state value isAbs =
+        match tryParseCoordinates value with
+            | Some (x, y) ->
+                let x, y =
+                    if isAbs then x, y
+                    else
+                        let hero = state.Observation.Hero
+                        hero.X + x, hero.Y + y
+                let sym = state.Observation.Rows[y][x]
+                setMessage $"Symbol: {sym}" state
+            | None ->
+                setMessage "Could not parse coordinates" state
+
+    /// Applies the given action to the given state using the
+    /// given NetHack engine.
+    let step (engine : IEngine) state aa =
+        match aa.Type with
+            | ActionType.SymAbs ->
+                getSymbol state aa.Value true
+            | ActionType.SymRel ->
+                getSymbol state aa.Value false
+            | _ -> engine.Step state (toAction aa)
 
     /// Updates the given note database.
     let updateNotes (aa : AgentAction) (notes : Note[]) =

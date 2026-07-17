@@ -181,6 +181,8 @@ module Prompt =
                     "Use Type=Key only for a simple command, such as 's' \
                     (search) or ',' (pick up), optionally with Count to \
                     repeat."
+                    "Use Type=SymAbs or Type=SymRel to read a symbol at a \
+                    specific absolute or relative location on the map."
                 | GameOver _ ->
                     "The game is over."
         ]
@@ -253,6 +255,8 @@ module Prompt =
             "* Move (or Run) diagonally when applicable. (However, \
             note that you can't move diagonally into or out of an \
             intact doorway.)"
+            "* If you are having trouble reading the map use SymAbs \
+            or SymRel to get your bearings."
         ]
 
     /// Creates a prompt for the agent based on the current state.

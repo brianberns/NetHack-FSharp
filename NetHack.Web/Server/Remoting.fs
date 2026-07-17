@@ -141,8 +141,7 @@ module Api =
                  *)
                 curGameState <-
                     hidden.AgentAction
-                        |> AgentAction.toAction
-                        |> engine.Step curGameState
+                        |> AgentAction.step engine curGameState
 
                     // update the agent's database of notes
                 curNotes <-
