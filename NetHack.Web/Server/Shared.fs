@@ -3,6 +3,7 @@ namespace NetHack.Web
 open NetHack.Agent
 open NetHack.Api
 
+/// Client-server DTO.
 type SessionState =
     {
         /// What the NetHack player can observe.
@@ -32,8 +33,12 @@ type SessionState =
         Prediction : string
     }
 
+/// Client-server NetHack web API.
 type INetHackApi =
     {
+        /// Gets the current number of game steps.
         GetStateCount : unit -> Async<int>
-        GetSessionState : int (*0-based index*) -> Async<Result<SessionState, string>>
+
+        /// Gets the session state at the given 0-based index.
+        GetSessionState : int -> Async<Result<SessionState, string>>
     }
