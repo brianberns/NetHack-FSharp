@@ -115,7 +115,7 @@ module Message =
             let onKeyDown (evt : Event) =
                 let keyEvt = unbox<KeyboardEvent> evt
                 match keyEvt.key with
-                    | "Enter" -> dispatch GetNextState
+                    | "Enter" | " " -> dispatch GetNextState
                     | _ -> ()
 
                 // listen for keydown events
