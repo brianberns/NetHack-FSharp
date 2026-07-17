@@ -117,12 +117,17 @@ module Native =
                 let loc = Assembly.GetExecutingAssembly().Location
                 if String.IsNullOrEmpty loc then AppContext.BaseDirectory
                 else Path.GetDirectoryName loc
-            let rec up (dir: DirectoryInfo) =
-                if isNull dir then None
-                else
-                    let candidate = Path.Combine(dir.FullName, "Core", "binary", "Release", "x64")
-                    if hasDll candidate then Some candidate else up dir.Parent
-            up (DirectoryInfo start)
+            // Deployed (xcopy) layout: the DLL sits right next to the assemblies.
+            if hasDll start then Some start
+            elif hasDll AppContext.BaseDirectory then Some AppContext.BaseDirectory
+            else
+                // Dev layout: walk up to the Core build output.
+                let rec up (dir: DirectoryInfo) =
+                    if isNull dir then None
+                    else
+                        let candidate = Path.Combine(dir.FullName, "Core", "binary", "Release", "x64")
+                        if hasDll candidate then Some candidate else up dir.Parent
+                up (DirectoryInfo start)
 
     let private dataDir () : string =
         match dataDirOverride with
@@ -281,6 +286,20 @@ module Native =
                 || File.GetLastWriteTimeUtc src > File.GetLastWriteTimeUtc dst
             if File.Exists src && stale then
                 try File.Copy(src, dst, true) with _ -> ()
+        // Keep ALL of NetHack's runtime files (config, save, level, bones, score,
+        // lock, data) in the executable's own directory rather than in per-user
+        // folders derived from %USERPROFILE% / %LOCALAPPDATA%. The Windows port
+        // resolves those with SHGetKnownFolderPath and *fatally aborts* ("Unable to
+        // get known folder path", windsys.c) when the host account has no loaded
+        // user profile — the norm for a service or IIS app-pool identity. It reads
+        // this switch from a file named exactly `sysconf` next to the host exe,
+        // before any known-folder lookup, so writing it here avoids the lookup
+        // outright and makes baseDir NetHack's single home (which must be
+        // writable). WIZARDS=* keeps debug-mode (integration-test) games working;
+        // HIDEUSAGE suppresses the command-line usage entry in the help menu.
+        File.WriteAllText(
+            Path.Combine(baseDir, "sysconf"),
+            "PORTABLE_DEVICE_PATHS=1\nWIZARDS=*\nHIDEUSAGE=1\n")
         // Sandbox the configuration: write our own rc and point NetHack at it via
         // NETHACKOPTIONS=@<file>. rcfile() treats a leading '@' as a config file
         // name and reads THAT instead of the user's ~/.nethackrc, so behaviour is
@@ -324,10 +343,19 @@ module Native =
         let enc =
             String(playerName |> Seq.filter Char.IsLetterOrDigit |> Seq.toArray)
         if enc <> "" then
-            let dirs =
-                [ Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData
-                  Environment.GetFolderPath Environment.SpecialFolder.UserProfile ]
+            // GetFolderPath returns "" (not throws) when the account has no loaded
+            // profile; guard anyway so this cleanup can never be what fails.
+            let folderPath f = try Environment.GetFolderPath f with _ -> ""
+            let profileDirs =
+                [ folderPath Environment.SpecialFolder.LocalApplicationData
+                  folderPath Environment.SpecialFolder.UserProfile ]
+                |> List.filter (String.IsNullOrEmpty >> not)
                 |> List.map (fun d -> Path.Combine(d, "NetHack", "5.0"))
+            // In portable-device mode (see prepareEnvironment) the level and lock
+            // files sit directly in the executable's own directory, so clean there
+            // too — otherwise a lock left by an interrupted run makes getlock()
+            // prompt to recover it, which nothing can answer in this headless host.
+            let dirs = AppContext.BaseDirectory :: profileDirs
             // level files are "<name>.<digits>"; leave the bare "<name>" (a save).
             let levelFile = Regex($@"^{Regex.Escape enc}\.\d+$", RegexOptions.IgnoreCase)
             for d in dirs do

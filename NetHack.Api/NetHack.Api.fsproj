@@ -16,4 +16,32 @@
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
   </ItemGroup>
 
+  <!-- The native engine + the data files it reads at runtime. These are built by
+       the C++ NetHackNative.vcxproj (Release/x64), which is NOT part of the .NET
+       build, so copy them into output here. Because Web.Server references this
+       project, they flow into its build directory too, ready to be deployed
+       alongside the managed DLLs. Build the native project first, or the globs
+       below resolve to nothing. -->
+  <PropertyGroup>
+    <_NativeDir>$(MSBuildThisFileDirectory)..\Core\binary\Release\x64\</_NativeDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <_NativeRuntime Include="$(_NativeDir)NetHackNative.dll" />
+    <_NativeRuntime Include="$(_NativeDir)nhdat500" />
+    <_NativeRuntime Include="$(_NativeDir)sysconf.template" />
+    <_NativeRuntime Include="$(_NativeDir)symbols.template" />
+    <_NativeRuntime Include="$(_NativeDir)nethackrc.template" />
+    <_NativeRuntime Include="$(_NativeDir)record" />
+    <_NativeRuntime Include="$(_NativeDir)opthelp" />
+    <_NativeRuntime Include="$(_NativeDir)license" />
+    <_NativeRuntime Include="$(_NativeDir)nethack.txt" />
+    <_NativeRuntime Include="$(_NativeDir)Guidebook.txt" />
+    <Content Include="@(_NativeRuntime)">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
 </Project>
