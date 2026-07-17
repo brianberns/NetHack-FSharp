@@ -27,7 +27,7 @@ module Remoting =
         }
 
     /// Gets the session state at the given 0-based index.
-    let getGameState stateIdx =
+    let getSessionState stateIdx =
         async {
             match! Async.Catch(api.GetSessionState stateIdx) with
                 | Choice1Of2 (Ok state) ->

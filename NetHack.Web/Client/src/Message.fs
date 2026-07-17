@@ -2,98 +2,128 @@ namespace NetHack.Web
 
 open System
 
+open Browser.Dom
 open Browser.Types
+
 open Elmish
 
+/// State of the user interface.
 type InnerState =
     {
+        /// Session state from server.
         SessionState : SessionState
+
+        /// Index of this session state.
         StateIdx : int
 
-        /// Is the server still working on the next state? The agent's turn is
-        /// a round trip to a language model, so it is worth saying so.
+        /// Is the server still working on the next state?
         Busy : bool
     }
 
-type State = Result<Option<InnerState>, string (*error message*)>
+module InnerState =
 
+    /// Creates an inner state.
+    let create sessionState stateIdx busy =
+        {
+            SessionState = sessionState
+            StateIdx = stateIdx
+            Busy = busy
+        }
+
+/// State of the user interface.
+type State =
+    Result<
+        Option<InnerState>,
+        string (*error message*)>
+
+/// Elmish message.
 type Message =
+
+    /// Sets the UI state.
     | SetState of State
+
+    /// Requests next UI state from server.
     | GetNextState
 
 module Message =
 
-    let private getInitialState =
+    /// Requests the given state from the server.
+    let private getState stateIdx =
+        async {
+            match! Remoting.getSessionState stateIdx with
+                | Ok sessionState ->
+                    return InnerState.create
+                        sessionState stateIdx false
+                        |> Some
+                        |> Ok
+                | Error error ->
+                    return Error error
+        }
+
+    /// Requests the most recent session state available from
+    /// the server.
+    let private getCurrentState =
         let get () =
             async {
                 match! Remoting.getStateCount () with
                     | Ok nStates ->
                         let idx = max (nStates - 1) 0
-                        match! Remoting.getGameState idx with
-                            | Ok sessionState ->
-                                let inner =
-                                    {
-                                        SessionState = sessionState
-                                        StateIdx = idx
-                                        Busy = false
-                                    }
-                                return Ok (Some inner)
-                            | Error error ->
-                                return Error error
+                        return! getState idx
                     | Error error ->
                         return Error error
             }
         Cmd.OfAsync.perform get () SetState
 
+    /// Gets initial state and triggers request for most recent
+    /// server state.
     let init () =
-        Ok None, getInitialState
+        Ok None, getCurrentState
 
+    /// Requests the next session state from the server.
     let private getNextState stateIdx =
-        let get () =
-            async {
-                let idx = stateIdx + 1
-                match! Remoting.getGameState idx with
-                    | Ok sessionState ->
-                        let inner =
-                            {
-                                SessionState = sessionState
-                                StateIdx = idx
-                                Busy = false
-                            }
-                        return Ok (Some inner)
-                    | Error error ->
-                        return Error error
-            }
-        Cmd.OfAsync.perform get () SetState
+        Cmd.OfAsync.perform
+            getState
+            (stateIdx + 1)
+            SetState
 
+    /// Updates the user interface based on the given message.
     let update msg (state : State) =
         match msg with
+
+                // set the UI state
             | SetState state -> state, Cmd.none
+
+                // request the next UI state from the server
             | GetNextState ->
                 match state with
 
-                        // keep showing this state, marked as busy, until the
-                        // server answers with the next one
+                        // initiate request
                     | Ok (Some inner) when not inner.Busy ->
                         Ok (Some { inner with Busy = true }),
                         getNextState inner.StateIdx
 
-                        // already waiting on a turn, so let it finish
+                        // ignore messages while waiting on server
                     | _ -> state, Cmd.none
 
-    /// Enter takes the next turn, wherever the focus happens to be. The button
-    /// answers to Enter by itself, but only while focused, and taking a turn
-    /// disables it, which drops the focus.
+    /// Subscribes to the Enter key regardless of where the focus is.
     let subscribe (_ : State) : Sub<Message> =
+
+        /// Starts subscription.
         let start dispatch =
+
+            /// Dispatches a key-down event.
             let onKeyDown (evt : Event) =
-                if (unbox<KeyboardEvent> evt).key = "Enter" then
-                    dispatch GetNextState
-            Browser.Dom.window.addEventListener("keydown", onKeyDown)
+                let keyEvt = unbox<KeyboardEvent> evt
+                match keyEvt.key with
+                    | "Enter" -> dispatch GetNextState
+                    | _ -> ()
+
+                // listen for keydown events
+            window.addEventListener("keydown", onKeyDown)
             {
                 new IDisposable with
                     member _.Dispose() =
-                        Browser.Dom.window.removeEventListener(
-                            "keydown", onKeyDown)
+                        window.removeEventListener("keydown", onKeyDown)
             }
+
         [ [ "keydown" ], start ]
