@@ -6,8 +6,8 @@ open Fable.Remoting.Client
 module Remoting =
 
     /// Prefix routes with /NetHackWeb.
-    let routeBuilder typeName methodName = 
-        sprintf "/NetHackWeb/%s/%s" typeName methodName
+    let routeBuilder typeName methodName =
+        sprintf "/NetHack/%s/%s" typeName methodName
 
     /// Server API.
     let api =
