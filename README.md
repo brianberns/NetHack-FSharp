@@ -1,5 +1,17 @@
 # NetHack-FSharp
 
+## LLM plays NetHack
+
+This repository allows a chatbot agent to play <a href="https://www.nethack.org/">NetHack</a>, a classic text-based dungeon exploration game, and provides a web app for humans to watch the action with popcorn buckets in hand. What becomes quickly obvious in this experiment is that while chatbots do well with text, of course, they really struggle with map reading and spatial awareness.
+
+Also, because NetHack can go on for thousands of turns, it's not practical to feed the entire game history to the agent as context. Instead, the agent manages its own working memory in the form of notes that it can create and delete. This allows the agent to remember the past and plan ahead, at least to some extent. The limitations of this approach quickly become obvious as well.
+
+This app was developed in tandem with Claude Code. I wrote the fun parts, integrating the agent with NetHack, while Claude handled the plumbing needed to expose a NetHack API, similar to the <a href="https://github.com/facebookresearch/nle">NetHack Learning Environment</a>. Claude also wrote the web app's UI, and did a bang-up job IMHO.
+
+Claude's description of the project follows below.
+
+## API
+
 An F# API that lets callers play **NetHack 5.0** as a pure-looking function
 
 ```fsharp
