@@ -618,12 +618,20 @@ module View =
                                                     prop.className "footer"
                                                     prop.children [
                                                         Html.button [
-                                                            prop.className "button rewind"
+                                                            prop.className "button icon"
                                                             prop.disabled inner.Busy
                                                             prop.title "Rewind to start"
                                                             prop.onClick (fun _ ->
                                                                 dispatch Rewind)
                                                             prop.text "⏮"
+                                                        ]
+                                                        Html.button [
+                                                            prop.className "button icon"
+                                                            prop.disabled inner.Busy
+                                                            prop.title "Previous state"
+                                                            prop.onClick (fun _ ->
+                                                                dispatch GetPreviousState)
+                                                            prop.text "⏪"
                                                         ]
                                                         Html.button [
                                                             prop.className "button"

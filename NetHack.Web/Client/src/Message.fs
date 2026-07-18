@@ -45,6 +45,9 @@ type Message =
     /// Requests next UI state from server.
     | GetNextState
 
+    /// Requests previous UI state from server.
+    | GetPreviousState
+
     /// Rewinds to first turn.
     | Rewind
 
@@ -86,26 +89,14 @@ module Message =
     let private getStateCmd stateIdx =
         Cmd.OfAsync.perform getState stateIdx SetState
 
-    /// Handles a GetNextState message.
-    let private handleGetNextState state =
+    /// Handles a GetFooState message.
+    let private handleGetState f state =
         match state with
 
                 // initiate request
             | Ok (Some inner) when not inner.Busy ->
                 Ok (Some { inner with Busy = true }),
-                getStateCmd (inner.StateIdx + 1)
-
-                // ignore messages while waiting on server
-            | state -> state, Cmd.none
-
-    /// Handles a Rewind message.
-    let private handleRewind state =
-        match state with
-
-                // initiate request
-            | Ok (Some inner) when not inner.Busy ->
-                Ok (Some { inner with Busy = true }),
-                getStateCmd 0
+                getStateCmd (f inner.StateIdx)
 
                 // ignore messages while waiting on server
             | state -> state, Cmd.none
@@ -114,8 +105,12 @@ module Message =
     let update msg state =
         match msg with
             | SetState state -> state, Cmd.none
-            | GetNextState -> handleGetNextState state
-            | Rewind -> handleRewind state
+            | GetNextState ->
+                handleGetState (fun idx -> idx + 1) state
+            | GetPreviousState ->
+                handleGetState (fun idx -> idx - 1) state
+            | Rewind ->
+                handleGetState (fun _ -> 0) state
 
     /// Subscribes to the Enter key regardless of where the focus is.
     let subscribe (_ : State) : Sub<Message> =

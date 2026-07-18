@@ -566,8 +566,8 @@ html, body {
     gap: 8px;
 }
 
-/* the icon-only rewind button: square-ish, no wide letter-spacing padding */
-.button.rewind {
+/* icon-only buttons (rewind, previous): square-ish, no wide letter-spacing */
+.button.icon {
     padding: 7px 14px;
     letter-spacing: 0;
     line-height: 1;
