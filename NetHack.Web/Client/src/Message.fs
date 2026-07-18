@@ -51,6 +51,9 @@ type Message =
     /// Rewinds to first turn.
     | Rewind
 
+    /// Fast-forwards to current state.
+    | FastForward
+
 module Message =
 
     /// Requests the given state from the server.
@@ -111,6 +114,8 @@ module Message =
                 handleGetState (fun idx -> idx - 1) state
             | Rewind ->
                 handleGetState (fun _ -> 0) state
+            | FastForward ->
+                handleGetState (fun _ -> Int32.MaxValue) state
 
     /// Subscribes to the Enter key regardless of where the focus is.
     let subscribe (_ : State) : Sub<Message> =

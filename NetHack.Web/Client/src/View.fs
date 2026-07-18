@@ -642,6 +642,14 @@ module View =
                                                                 if inner.Busy then "Thinking…"
                                                                 else "Next")
                                                         ]
+                                                        Html.button [
+                                                            prop.className "button icon"
+                                                            prop.disabled inner.Busy
+                                                            prop.title "Fast forward"
+                                                            prop.onClick (fun _ ->
+                                                                dispatch FastForward)
+                                                            prop.text "⏭"
+                                                        ]
                                                     ]
                                                 ]
                                             ]
