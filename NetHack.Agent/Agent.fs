@@ -92,7 +92,7 @@ module OpenRouter =
     let model =
         {
             Name = "Claude"
-            Id = "anthropic/claude-sonnet-4.6"
+            Id = "anthropic/claude-opus-4.8"
             ApiKeyName = "OpenRouter:ApiKey"
             Endpoint = "https://openrouter.ai/api/v1"
             SupportsJsonSchema = true
