@@ -98,7 +98,7 @@ module Native =
     [<DllImport(Dll, CallingConvention = CallingConvention.Cdecl)>]
     extern nativeint private nhglue_build_menu(byte[] anythings, int[] counts, int count)
 
-    // ---- locating the DLL / data (#5) ---------------------------------
+    // ---- locating the DLL / data --------------------------------------
 
     /// Explicit directory holding NetHackNative.dll + data files. When None
     /// (default), the directory is discovered: the NETHACK_NATIVE_DIR
@@ -266,8 +266,12 @@ module Native =
           Hero = { X = 0; Y = 0 }; Character = emptyCharacter
           Entities = []; Status = emptyStatus; Inventory = []; Messages = [] }
 
-    // ---- environment & playground (#6) --------------------------------
+    // ---- environment & playground -------------------------------------
 
+    // The DLL + the data files NetHack reads at runtime, staged next to the host
+    // exe by prepareEnvironment. Must mirror the <_NativeRuntime> item list in
+    // NetHack.Api.fsproj (which copies the same set into build output); keep the
+    // two in sync when adding or removing a data file.
     let private dataFiles =
         [ "sysconf.template"; "symbols.template"; "nethackrc.template"
           "nhdat500"; "record"; "opthelp"; "license"; "nethack.txt"
@@ -549,7 +553,7 @@ module Native =
             inbox.Take()
 
         /// The single callback for every window operation.
-        member this.Dispatch(name: string, fmt: string, retPtr: nativeint, args: nativeint) =
+        member this.Dispatch(name: string, retPtr: nativeint, args: nativeint) =
             let writeInt (v: int) = if retPtr <> IntPtr.Zero then Marshal.WriteInt32(retPtr, v)
             let writeChar (c: char) = if retPtr <> IntPtr.Zero then Marshal.WriteByte(retPtr, byte c)
             // Trace the callback (skip the per-cell floods that fire hundreds of
@@ -867,11 +871,13 @@ module Native =
         // keep the delegate alive for the life of the session; faults inside a
         // callback are captured and surfaced, never swallowed silently.
         session.Handler <-
-            Handler(fun namePtr fmtPtr retPtr args _ ->
+            // fmtPtr (the type-code string) is unused: the C trampoline already
+            // decoded every arg into uniform 64-bit slots, and each callback here
+            // reads its args by fixed index, so there is nothing to marshal it for.
+            Handler(fun namePtr _fmtPtr retPtr args _ ->
                 try
                     let name = Marshal.PtrToStringAnsi namePtr
-                    let fmt = Marshal.PtrToStringAnsi fmtPtr
-                    session.Dispatch(name, fmt, retPtr, args)
+                    session.Dispatch(name, retPtr, args)
                 with ex -> session.Fault ex)
         // NB: nhglue_set_handler (the first P/Invoke, which loads the DLL) is
         // deferred to Start, so the DLL's CRT snapshots NETHACKOPTIONS/rc *after*

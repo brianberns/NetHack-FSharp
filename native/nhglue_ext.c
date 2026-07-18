@@ -153,7 +153,7 @@ nhglue_is_pile_at(int x, int y)
 {
     int g;
 
-    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO)
+    if (x < 1 || x >= COLNO || y < 0 || y >= ROWNO)
         return 0;
     /* the combined glyph_is_piletop() macro is #if 0'd in this build, so test
        the individual pile-top predicates that cover objects, corpses, statues */
@@ -181,7 +181,7 @@ nhglue_floor_object_at(int x, int y, int index, char *buf, int buflen)
 
     if (buf && buflen > 0)
         buf[0] = '\0';
-    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO)
+    if (x < 1 || x >= COLNO || y < 0 || y >= ROWNO)
         return 0;
     for (otmp = svl.level.objects[x][y]; otmp; otmp = otmp->nexthere) {
         if (i++ == index) {
@@ -235,7 +235,7 @@ nhglue_feature_at(int x, int y, char *buf, int buflen)
 
     if (buf && buflen > 0)
         buf[0] = '\0';
-    if (x < 0 || x >= COLNO || y < 0 || y >= ROWNO)
+    if (x < 1 || x >= COLNO || y < 0 || y >= ROWNO)
         return 0;
     glyph = glyph_at(x, y);
     if (glyph_is_cmap(glyph)) {

@@ -44,4 +44,13 @@
     </Content>
   </ItemGroup>
 
+  <!-- If the native project hasn't been built, the globs above resolve to
+       nothing and the managed build still succeeds — the failure only surfaces
+       at runtime as "Could not locate NetHackNative.dll". Warn at build time
+       instead, without hard-failing the pure-managed dev loop. -->
+  <Target Name="_WarnMissingNativeEngine" BeforeTargets="Build">
+    <Warning Condition="!Exists('$(_NativeDir)NetHackNative.dll')"
+             Text="NetHackNative.dll not found in $(_NativeDir). Build the native project (Release/x64) or the native engine won't be deployed." />
+  </Target>
+
 </Project>
