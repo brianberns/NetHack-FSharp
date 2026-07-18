@@ -71,7 +71,7 @@ module Message =
 
     /// Requests the most recent session state available from
     /// the server.
-    let private getCurrentState =
+    let private getCurrentStateCmd =
         let get () =
             async {
                 match! Remoting.getStateCount () with
@@ -86,7 +86,7 @@ module Message =
     /// Gets initial state and triggers request for most recent
     /// server state.
     let init () =
-        Ok None, getCurrentState
+        Ok None, getCurrentStateCmd
 
     /// Requests the given state from the server.
     let private getStateCmd stateIdx =
@@ -104,6 +104,18 @@ module Message =
                 // ignore messages while waiting on server
             | state -> state, Cmd.none
 
+    /// Handles a FastFoward message.
+    let private handleFastForward state =
+        match state with
+
+                // initiate request
+            | Ok (Some inner) when not inner.Busy ->
+                Ok (Some { inner with Busy = true }),
+                getCurrentStateCmd
+
+                // ignore messages while waiting on server
+            | state -> state, Cmd.none
+
     /// Updates the user interface based on the given message.
     let update msg state =
         match msg with
@@ -115,7 +127,7 @@ module Message =
             | Rewind ->
                 handleGetState (fun _ -> 0) state
             | FastForward ->
-                handleGetState (fun _ -> Int32.MaxValue) state
+                handleFastForward state
 
     /// Subscribes to the Enter key regardless of where the focus is.
     let subscribe (_ : State) : Sub<Message> =
