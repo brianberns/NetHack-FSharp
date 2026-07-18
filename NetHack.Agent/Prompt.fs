@@ -256,8 +256,8 @@ module Prompt =
             note that you can't move diagonally into or out of an \
             intact doorway.)"
             "* A pile contains multiple objects, even though only \
-            the top one is shown. Similarly, a monster on a square \
-            might be standing on objects that aren't shown."
+            the top one is shown. Similarly, a monster's square \
+            might contain objects that aren't shown."
             "* If you are having trouble reading the map use SymAbs \
             or SymRel to get your bearings."
         ]
