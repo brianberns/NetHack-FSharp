@@ -172,7 +172,7 @@ module Api =
     let private enforceWait waitSecs =
         let msg =
             let plural = if waitSecs = 1 then "" else "s"
-            $"Next turn available in {waitSecs} second{plural}."
+            $"!Next turn available in {waitSecs} second{plural}."
         if hiddenStates.Count = 0 then
             Error msg
         else
