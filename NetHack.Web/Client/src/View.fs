@@ -118,10 +118,15 @@ module View =
                             prop.className "messages"
                             prop.children [
                                 for i, msg in List.indexed obs.Messages do
+                                    // a system message is flagged with a leading
+                                    // '!'; strip the marker and emphasise the rest
+                                    let isSystem = msg.StartsWith "!"
                                     Html.div [
                                         prop.key i
-                                        prop.className "message"
-                                        prop.text msg
+                                        prop.className (
+                                            if isSystem then "message system"
+                                            else "message")
+                                        prop.text (if isSystem then msg[1..] else msg)
                                     ]
                             ]
                         ]

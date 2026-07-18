@@ -136,6 +136,17 @@ html, body {
     padding-left: 9px;
 }
 
+/* A system message (flagged with a leading '!'): louder than game text, so the
+   user notices it. Colour, weight and a tint carry the emphasis without adding
+   vertical padding, which would break the fixed messages-box height. */
+.message.system {
+    color: var(--warn);
+    font-weight: 700;
+    border-left-color: var(--warn);
+    background: rgba(210, 153, 34, 0.12);
+    border-radius: 0 3px 3px 0;
+}
+
 /* ---------- map ---------- */
 
 .map-scroll {
