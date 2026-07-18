@@ -631,7 +631,7 @@ module View =
                                                             prop.title "Previous state"
                                                             prop.onClick (fun _ ->
                                                                 dispatch GetPreviousState)
-                                                            prop.text "⏪"
+                                                            prop.text "⏴"
                                                         ]
                                                         Html.button [
                                                             prop.className "button"
