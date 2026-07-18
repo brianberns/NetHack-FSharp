@@ -6,6 +6,9 @@ open NetHack.Api
 /// Client-server DTO.
 type SessionState =
     {
+        /// 0-based index.
+        Index : int
+
         /// What the NetHack player can observe.
         Observation : Observation
 

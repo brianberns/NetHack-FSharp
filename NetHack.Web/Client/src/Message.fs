@@ -13,9 +13,6 @@ type InnerState =
         /// Session state from server.
         SessionState : SessionState
 
-        /// Index of this session state.
-        StateIdx : int
-
         /// Is the server still working on the next state?
         Busy : bool
     }
@@ -23,10 +20,9 @@ type InnerState =
 module InnerState =
 
     /// Creates an inner state.
-    let create sessionState stateIdx busy =
+    let create sessionState busy =
         {
             SessionState = sessionState
-            StateIdx = stateIdx
             Busy = busy
         }
 
@@ -62,7 +58,7 @@ module Message =
             match! Remoting.getSessionState stateIdx with
                 | Ok sessionState ->
                     return InnerState.create
-                        sessionState stateIdx false
+                        sessionState false
                         |> Some
                         |> Ok
                 | Error error ->
@@ -99,7 +95,7 @@ module Message =
                 // initiate request
             | Ok (Some inner) when not inner.Busy ->
                 Ok (Some { inner with Busy = true }),
-                getStateCmd (f inner.StateIdx)
+                getStateCmd (f inner.SessionState.Index)
 
                 // ignore messages while waiting on server
             | state -> state, Cmd.none

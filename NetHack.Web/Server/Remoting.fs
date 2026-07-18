@@ -61,8 +61,9 @@ module Api =
     module private HiddenState =
 
         /// Creates a DTO from hidden state.
-        let toSessionState hidden =
+        let toSessionState index hidden =
             {
+                Index = index
                 Observation = hidden.GameState.Observation
                 Pending = hidden.GameState.Pending
                 CurrentNotes = hidden.Notes
@@ -161,7 +162,10 @@ module Api =
 
                 lastAgentCallTime <- DateTime.UtcNow
 
-                return Ok (HiddenState.toSessionState hidden)
+                return HiddenState.toSessionState
+                    (hiddenStates.Count - 1)
+                    hidden
+                    |> Ok
 
             with exn ->
                 printfn $"{exn.Message}"
@@ -181,6 +185,7 @@ module Api =
                 AgentAction.setMessage msg hidden.GameState
             { hidden with GameState = gameState }
                 |> HiddenState.toSessionState
+                    (hiddenStates.Count - 1)
                 |> Ok
 
     /// Gets the session state at the given index.
@@ -199,7 +204,8 @@ module Api =
             if stateIdx < hiddenStates.Count then
                 let stateIdx = max stateIdx 0
                 let hidden = hiddenStates[stateIdx]
-                return Ok (HiddenState.toSessionState hidden)
+                return Ok (
+                    HiddenState.toSessionState stateIdx hidden)
 
                 // game is over?
             elif curGameState.Over then
