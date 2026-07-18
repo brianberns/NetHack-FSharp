@@ -91,8 +91,8 @@ module OpenRouter =
 
     let model =
         {
-            Name = "Claude"
-            Id = "anthropic/claude-opus-4.8"
+            Name = "Gpt"
+            Id = "openai/gpt-5.6-sol-pro"
             ApiKeyName = "OpenRouter:ApiKey"
             Endpoint = "https://openrouter.ai/api/v1"
             SupportsJsonSchema = true
