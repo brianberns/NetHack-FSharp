@@ -470,13 +470,17 @@ module View =
             if frac > 0.5 then "hp-good"
             elif frac > 0.25 then "hp-warn"
             else "hp-bad"
+        let expStr =
+            match st.Experience with
+                | Some experience -> $"{st.ExpLevel} ({experience})"
+                | None -> string st.ExpLevel
         let facts =
             [ "Role", capitalize ch.Role
               "Race", capitalize ch.Race
               "Gender", capitalize ch.Gender
               "Align", capitalize st.Alignment
               "AC", string st.ArmorClass
-              "Exp", $"{st.ExpLevel} ({st.Experience |> Option.defaultValue 0L})"
+              "Exp", expStr
               "Gold", $"${st.Gold}"
               "Level", string st.DungeonLevel
               "Depth", string st.Depth
