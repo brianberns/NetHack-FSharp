@@ -321,20 +321,18 @@ module Native =
         // ("You can't move diagonally into an intact doorway.", "It's solid
         // stone.", ...); without it a move that fails is completely silent (no
         // message, no turn spent), so the caller can't tell an action had no
-        // effect. All are standard opt-in options a human can enable, so they
-        // surface only fair, UI-available information.
+        // effect. 'pettype:none' starts the hero with no pet: a pet wanders onto
+        // the hero's tile and neighbouring squares, which muddles the map the
+        // agent is trying to navigate (and perturbs scripted test scenarios that
+        // depend on exact tile contents). All are standard opt-in options a human
+        // can enable, so they surface only fair, UI-available information.
         // No symset is set on purpose: nhglue_map_char re-renders the map from the
         // glyph itself (box-drawing walls, disambiguated terrain), so the compiled
         // default ASCII symset is fine — and we avoid symset:plain, whose only
         // effect is to draw wall corners as '+', colliding with closed doors.
         let baseOpts =
-            "OPTIONS=time,hilite_pile,mention_decor,mention_walls\nOPTIONS=number_pad:0\n"
+            "OPTIONS=time,hilite_pile,mention_decor,mention_walls,pettype:none\nOPTIONS=number_pad:0\n"
         File.WriteAllText(Path.Combine(baseDir, "sandbox.nethackrc"), baseOpts)
-        // Wizard games (integration tests) additionally start with no pet, so
-        // scripted scenarios are deterministic — a pet follows the hero and swaps
-        // onto the very tiles under test. Normal play keeps its pet.
-        File.WriteAllText(Path.Combine(baseDir, "sandbox-wizard.nethackrc"),
-            baseOpts + "OPTIONS=pettype:none\n")
         Environment.SetEnvironmentVariable(
             "NETHACKOPTIONS", "@" + Path.Combine(baseDir, "sandbox.nethackrc"))
         Directory.SetCurrentDirectory(baseDir)
@@ -822,11 +820,6 @@ module Native =
             Environment.SetEnvironmentVariable(
                 "NETHACK_SEED",
                 match opts.Seed with Some s -> string s | None -> null)
-            // Wizard games use the pet-free rc for deterministic scenarios.
-            if opts.Wizard then
-                Environment.SetEnvironmentVariable(
-                    "NETHACKOPTIONS",
-                    "@" + Path.Combine(AppContext.BaseDirectory, "sandbox-wizard.nethackrc"))
             // "-D" requests debug (wizard) mode, which windmain's
             // authorize_wizard_mode grants only to the player named "wizard".
             let args =
@@ -880,8 +873,9 @@ module Native =
                     session.Dispatch(name, retPtr, args)
                 with ex -> session.Fault ex)
         // NB: nhglue_set_handler (the first P/Invoke, which loads the DLL) is
-        // deferred to Start, so the DLL's CRT snapshots NETHACKOPTIONS/rc *after*
-        // Start applies any per-game overrides (getenv reads the load-time copy).
+        // deferred to Start, so the DLL's CRT snapshots the environment *after*
+        // Start sets any per-game variables like NETHACK_SEED (getenv reads the
+        // load-time copy).
         { new IEngine with
             member _.Start opts = session.Start opts
             member _.Step s a = session.Step a }
