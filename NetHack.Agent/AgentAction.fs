@@ -37,7 +37,8 @@ type AgentAction =
         [<JsonPropertyName("NotesToDelete")>]
         _NotesToDelete : int[]
 
-        [<Description("IDs of notes that were relevant on this turn.")>]
+        [<Description("IDs of notes that were relevant on this turn \
+        or will be relevant in the future.")>]
         [<JsonPropertyName("RelevantNotes")>]
         _RelevantNotes : int[]
 
