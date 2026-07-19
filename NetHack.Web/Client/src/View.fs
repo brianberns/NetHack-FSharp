@@ -472,8 +472,9 @@ module View =
             else "hp-bad"
         let expStr =
             match st.Experience with
-                | Some experience -> $"{st.ExpLevel} ({experience})"
-                | None -> string st.ExpLevel
+                | Some experience when experience > 0 ->
+                    $"{st.ExpLevel} ({experience})"
+                | _ -> string st.ExpLevel
         let facts =
             [ "Role", capitalize ch.Role
               "Race", capitalize ch.Race
