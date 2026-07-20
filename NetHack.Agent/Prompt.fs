@@ -260,12 +260,11 @@ module Prompt =
             might contain objects that aren't shown."
             "* Rooms fully visible on the map have typically already \
             been explored, so don't re-explore them. Instead, extend \
-            the map into blank regions via untried doors and \
-            corridors that appear to be dead ends."
-            "* If you run into a wall, you might still be able to \
-            continue along the corridor by adjusting your direction."
-            "* If you are having trouble reading the map use SymAbs \
-            or SymRel to get your bearings."
+            the map into blank regions of the dungeon via untried \
+            doors and corridors that appear to be dead ends."
+            "* If you run into a wall, you might be able to continue \
+            along the corridor by adjusting your direction, instead \
+            of giving up."
         ]
 
     /// Creates a prompt for the agent based on the current state.
