@@ -168,8 +168,8 @@ module Prompt =
                 | Menu(_, PickNone, _) ->
                     "Reply Type=Proceed to dismiss the menu."
                 | Menu _ ->
-                    "Reply Type=Select with the item letters or use Type=Cancel \
-                    to cancel."
+                    "Reply Type=Select with the item letters or use \
+                    Type=Cancel to cancel."
                 | More ->
                     "Reply Type=Proceed to continue."
                 | Command ->
