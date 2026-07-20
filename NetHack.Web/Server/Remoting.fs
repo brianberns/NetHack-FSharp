@@ -51,7 +51,7 @@ module Api =
             /// Game state prior to agent's action.
             GameState : GameState
 
-            /// Agent's notes prior to this game state.
+            /// Agent's notes prior to agent's action.
             Notes : Note[]
 
             /// Agent's response to this game state.
@@ -69,10 +69,10 @@ module Api =
                 CurrentNotes = hidden.Notes
                 RelevantNotes =
                     hidden.AgentAction.RelevantNotes
-                        |> Array.map (fun id -> id - 1)
+                        |> Array.map (fun id -> id - 1)   // to 0-based index
                 NotesToDelete =
                     hidden.AgentAction.NotesToDelete
-                        |> Array.map (fun id -> id - 1)
+                        |> Array.map (fun id -> id - 1)   // to 0-based index
                 NotesToAdd =
                     hidden.AgentAction.NotesToAdd
                         |> Array.map Note.create
@@ -116,16 +116,17 @@ module Api =
     /// Invokes agent to generate the next session state.
     let private generateNextState agent =
         async {
-                    // get latest agent action, if any
-            let lastActionOpt =
-                hiddenStates
-                    |> Seq.tryLast
-                    |> Option.map _.AgentAction
-
-                // get prompt for the next state
-            let prompt =
-                Prompt.getPrompt curGameState lastActionOpt curNotes
             try
+                    // get latest agent action, if any
+                let lastActionOpt =
+                    hiddenStates
+                        |> Seq.tryLast
+                        |> Option.map _.AgentAction
+
+                    // get prompt for the next state
+                let prompt =
+                    Prompt.getPrompt curGameState lastActionOpt curNotes
+
                     // request action from agent
                 let! aa =
                     Agent.getResultAsync<AgentAction> prompt agent
@@ -169,6 +170,7 @@ module Api =
 
             with exn ->
                 printfn $"{exn.Message}"
+                printfn $"{exn.StackTrace}"
                 return Error exn.Message
         }
 
