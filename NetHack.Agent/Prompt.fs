@@ -254,10 +254,14 @@ module Prompt =
             exploring. Use Move for precise navigation."
             "* Move (or Run) diagonally when applicable. (However, \
             note that you can't move diagonally into or out of an \
-            intact doorway.)"
+            intact door.)"
             "* A pile contains multiple objects, even though only \
             the top one is shown. Similarly, a monster's square \
             might contain objects that aren't shown."
+            "* Rooms visible on the map have typically already been \
+            explored, so don't re-explore them. Instead, explore \
+            blank regions of the map via untried doors and corridors \
+            that might appear to be dead ends."
             "* If you are having trouble reading the map use SymAbs \
             or SymRel to get your bearings."
         ]
