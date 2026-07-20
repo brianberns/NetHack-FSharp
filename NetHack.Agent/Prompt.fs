@@ -253,8 +253,8 @@ module Prompt =
             "* Prefer the Run command over the Move command when \
             exploring. Use Move for precise navigation."
             "* Move and Run diagonally when applicable. (However, \
-            note that you can't move diagonally into or out of an \
-            intact door.)"
+            note that you can't move diagonally into or out of a \
+            door.)"
             "* A pile contains multiple objects, even though only \
             the top one is shown. Similarly, a monster's square \
             might contain objects that aren't shown."
