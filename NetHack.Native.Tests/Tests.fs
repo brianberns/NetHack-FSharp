@@ -219,15 +219,17 @@ type NativeTests(fixture: GameFixture) =
         Assert.False start.Over
 
     // Every entity at spawn is in the hero's current sight -- nothing is
-    // remembered-but-unseen on turn one. The non-hero starting pet ensures the
-    // flag flows through the real cansee() query, not just the hero's hardcoded true.
+    // remembered-but-unseen on turn one. The seeded start places a non-hero
+    // entity in view, so InView flows through the real cansee() query, not just
+    // the hero's hardcoded true. (The hero starts petless -- see pettype:none in
+    // Native.prepareEnvironment -- so this leans on the seeded level, not a pet.)
     [<SkippableFact>]
     member _.``spawn entities are all in view``() =
         skipUnlessNative ()
         let start = fixture.S.Start
         Assert.True(
             start.Observation.Entities |> List.exists (fun e -> e.Kind <> HeroSelf),
-            "the seeded start has a non-hero entity (the pet) to exercise cansee")
+            "the seeded start has a non-hero entity to exercise cansee")
         Assert.All(start.Observation.Entities, fun e -> Assert.True e.InView)
 
     // Walls render as box-drawing (the glyph->char remap), so '+' stays reserved
