@@ -200,7 +200,7 @@ module AgentAction =
                         let hero = state.Observation.Hero
                         hero.X + x, hero.Y + y
                 let sym = state.Observation.Rows[y][x]
-                setMessage $"Symbol: {sym}" state
+                setMessage $"Symbol: `{sym}`" state
             | None ->
                 setMessage "Could not parse coordinates" state
 
