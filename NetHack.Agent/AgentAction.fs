@@ -192,17 +192,26 @@ module AgentAction =
 
     /// Gets a symbol on the map.
     let private getSymbol state value isAbs =
-        match tryParseCoordinates value with
-            | Some (x, y) ->
-                let x, y =
-                    if isAbs then x, y
-                    else
-                        let hero = state.Observation.Hero
-                        hero.X + x, hero.Y + y
-                let sym = state.Observation.Rows[y][x]
-                setMessage $"Symbol: `{sym}`" state
-            | None ->
-                setMessage "Could not parse coordinates" state
+        let message =
+            match tryParseCoordinates value with
+                | Some (x, y) ->
+                    let x, y =
+                        if isAbs then x, y
+                        else
+                            let hero = state.Observation.Hero
+                            hero.X + x, hero.Y + y
+                    let sym = state.Observation.Rows[y][x]
+                    let nameOpt =
+                        state.Observation.Entities
+                            |> Seq.tryFind (fun ent ->
+                                ent.Symbol = sym)
+                            |> Option.bind _.Name
+                    match nameOpt with
+                        | Some name -> $"Symbol: `{sym}` ({name})"
+                        | None -> $"Symbol: `{sym}'"
+                | None ->
+                    "Could not parse coordinates"
+        setMessage message state
 
     /// Applies the given action to the given state using the
     /// given NetHack engine.
