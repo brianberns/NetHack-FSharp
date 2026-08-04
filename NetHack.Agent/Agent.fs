@@ -99,6 +99,18 @@ module OpenRouter =
             TryParseWaitTime = fun _ -> None
         }
 
+module Local =
+
+    let model =
+        {
+            Name = "Qwen"
+            Id = "qwen3-30b-a3b"
+            ApiKeyName = ""
+            Endpoint = "http://127.0.0.1:8080/v1"
+            SupportsJsonSchema = true
+            TryParseWaitTime = fun _ -> None
+        }
+
 /// Decision-making agent.
 type Agent =
     {
@@ -123,8 +135,12 @@ module Agent =
     /// Creates an agent.
     let create (config : IConfiguration) model =
         let openAIClient =
+            let key =
+                if String.IsNullOrEmpty(model.ApiKeyName) then
+                    "not-needed"
+                else config[model.ApiKeyName]
             OpenAIClient(
-                ApiKeyCredential(config[model.ApiKeyName]),
+                ApiKeyCredential(key),
                 OpenAIClientOptions(
                     Endpoint = Uri(model.Endpoint)))
         let chatClient =
