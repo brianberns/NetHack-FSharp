@@ -103,8 +103,8 @@ module Local =
 
     let model =
         {
-            Name = "Qwen"
-            Id = "qwen3-30b-a3b"
+            Name = "Local"
+            Id = "local"
             ApiKeyName = ""
             Endpoint = "http://127.0.0.1:8080/v1"
             SupportsJsonSchema = true
@@ -142,6 +142,7 @@ module Agent =
             OpenAIClient(
                 ApiKeyCredential(key),
                 OpenAIClientOptions(
+                    NetworkTimeout = TimeSpan.FromMinutes(10.0),
                     Endpoint = Uri(model.Endpoint)))
         let chatClient =
             openAIClient
