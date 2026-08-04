@@ -101,7 +101,7 @@ module Api =
 
     /// Minimum time between agent calls.
     let private minAgentDelay =
-        if model.Id = "Local" then TimeSpan.Zero
+        if model.Name = Local.model.Name then TimeSpan.Zero
         else TimeSpan.FromMinutes(1.0)
 
     /// Asynchronous lock.
