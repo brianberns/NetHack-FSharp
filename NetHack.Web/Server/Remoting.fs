@@ -30,7 +30,7 @@ type AsyncLock() =
 module Api =
 
     /// LLM driving the agent.
-    let private model = OpenRouter.model
+    let private model = Local.model
 
     /// Creates a NetHack-playing agent.
     let private createAgent dir =
@@ -101,7 +101,8 @@ module Api =
 
     /// Minimum time between agent calls.
     let private minAgentDelay =
-        TimeSpan.FromMinutes(1.0)
+        if model.Id = "Local" then TimeSpan.Zero
+        else TimeSpan.FromMinutes(1.0)
 
     /// Asynchronous lock.
     let private asyncLock = new AsyncLock()
