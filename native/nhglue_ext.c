@@ -250,7 +250,8 @@ nhglue_feature_at(int x, int y, char *buf, int buflen)
 /*
  * Custom disambiguating character for the *displayed* glyph, so the ASCII map
  * can separate glyphs NetHack draws with the same char: doorway vs floor, tree
- * vs corridor, lava vs water, a spellbook object vs a closed door, etc. Also
+ * vs corridor, lava vs water, a spellbook object vs a closed door, confirmed
+ * rock vs never-sensed blank, etc. Also
  * re-draws the eleven wall/corner glyphs with Unicode box-drawing (mirroring
  * NetHack's own DECgraphics orientation), which frees '+' to mean closed door
  * only. Returns a Unicode code point (>0) for glyphs we re-map, or 0 to keep
@@ -289,6 +290,12 @@ nhglue_map_char(int glyph)
         case S_sink:    return 0x2294; /* sink (vs fountain '{') */
         case S_lava:    return 0x224B; /* molten lava (vs water '}') */
         case S_grave:   return 0x2020; /* grave (vs wall) */
+        /* confirmed solid rock otherwise shares blank ' ' with cells the hero
+           has never sensed at all (GLYPH_UNEXPLORED, which never reaches this
+           branch); without this, both end up as the same map character and,
+           worse, the same Legend entry, which tells the caller every blank
+           cell on the map is "stone" as soon as any single one is */
+        case S_stone:   return 0x2591; /* light shade: known rock, not a gap */
         default:        return 0;      /* floor, corridor, fountain, ... as-is */
         }
     }

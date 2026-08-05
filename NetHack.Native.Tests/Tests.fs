@@ -118,6 +118,11 @@ type GameFixture() =
         // Run feeds "G" + a direction key.
         let ran = engine.Step rested (Run West)
 
+        // Step through the west doorway: reveals a sliver of corridor, which in
+        // turn confirms the rock flanking it (glyph -> '░'), distinct from cells
+        // never sensed at all (glyph -> blank, no Legend entry).
+        let exitedRoom = engine.Step ran (Move West)
+
         // Overlong getlin reply: must be truncated, never overrun the game thread's
         // char[BUFSZ] buffer (which crashes later at an unrelated spot).
         let overlong = String('a', 256 * 3)
@@ -180,6 +185,7 @@ type GameFixture() =
            BeforeRest = beforeRest
            Rested = rested
            Ran = ran
+           ExitedRoom = exitedRoom
            AfterOverlong = afterOverlong
            AfterOverlong2 = afterOverlong2
            AfterFarlook = afterFarlook
@@ -271,6 +277,17 @@ type NativeTests(fixture: GameFixture) =
                 items |> List.map (fun it -> it.Key),
                 s.Start.Observation.Inventory |> List.map (fun it -> it.Letter))
         | other -> failwith $"expected an inventory Menu, got {other}"
+
+    // Confirmed rock (sensed while standing next to a corridor) must render and
+    // legend distinctly from cells the hero has never sensed at all -- both used
+    // to collapse onto the same blank ' ' character, which made every unexplored
+    // cell on the map look like confirmed stone as soon as any single cell was.
+    [<SkippableFact>]
+    member _.``confirmed rock is legended distinctly from unexplored blanks``() =
+        skipUnlessNative ()
+        let legend = fixture.S.ExitedRoom.Observation.Legend
+        Assert.Equal(Some "stone", legend |> Map.tryFind "░")
+        Assert.Equal(None, legend |> Map.tryFind " ")
 
     // Cancel backs out of a getobj prompt whose only exit is ESC.
     [<SkippableFact>]
