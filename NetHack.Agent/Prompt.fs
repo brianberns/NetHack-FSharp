@@ -41,6 +41,11 @@ module Prompt =
             "```"
 
             ""
+            "Blank spaces in the map indicate either unexplored areas \
+            or walls. The x-coord increases to the east and the y-coord \
+            increases to the south."
+
+            ""
             "## Legend:"
             "| Symbol | Name |"
             "|--|--|"
@@ -98,16 +103,17 @@ module Prompt =
             "|--|--|--|--|--|--|"
             for (entity : Entity) in entities do
                 let name = Option.defaultValue "" entity.Name
-                let pile = if entity.Pile then "Pile" else ""
+                let pile =
+                    if entity.Pile then "Pile"
+                    else ""
                 let viewable =
                     if entity.InView then "In view"
                     else "Out of view"
                 $"| {entity.Pos.String} | {entity.Symbol} | {entity.Kind} | {name} | {pile} | {viewable} |"
             ""
-            "A 'pile' indicates that multiple objects occupy the same \
-            square, but only the top one is shown on the map and listed \
-            here. Similarly, a monster occupying the same square as \
-            an object obscures the object underneath it."
+            "A pile contains multiple objects, even though only \
+            the top one is shown. Similarly, a monster's square \
+            might contain objects that aren't shown."
         ]
 
     /// Creates the "Inventory" portion of a prompt.
@@ -122,8 +128,11 @@ module Prompt =
         ]
 
     /// Creates the "Messages" portion of a prompt.
-    let private getMessages (messages : List<string>) =
+    let private getMessages messages =
         [
+            let messages =
+                List.where (fun msg ->
+                    msg <> "It's a wall.") messages   // this is an unhelpful message that appears when a successful Run ends at a wall
             if not (List.isEmpty messages) then
                 ""
                 "# Messages"
@@ -242,7 +251,7 @@ module Prompt =
         [
             if notes.Length > 0 then
                 ""
-                "# Your notes"
+                "# Your notes from previous turns"
                 for i = 0 to notes.Length - 1 do
                     $"{i+1}. %s{notes[i].Text}"
         ]
@@ -258,9 +267,6 @@ module Prompt =
             "* Move and Run diagonally when applicable. (However, \
             note that you can't move diagonally into or out of a \
             door.)"
-            "* A pile contains multiple objects, even though only \
-            the top one is shown. Similarly, a monster's square \
-            might contain objects that aren't shown."
             "* Rooms fully visible on the map have typically already \
             been explored, so don't re-explore them. Instead, extend \
             the map into blank regions of the dungeon via untried \
