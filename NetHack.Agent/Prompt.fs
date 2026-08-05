@@ -103,8 +103,10 @@ module Prompt =
                     else "Out of view"
                 $"| {entity.Pos.String} | {entity.Symbol} | {entity.Kind} | {name} | {pile} | {viewable} |"
             ""
-            "When multiple entities occupy the same square (a 'pile'), \
-            only the top one is shown on the map and listed here."
+            "A 'pile' indicates that multiple objects occupy the same \
+            square, but only the top one is shown on the map and listed \
+            here. Similarly, a monster occupying the same square as \
+            an object obscures the object underneath it."
         ]
 
     /// Creates the "Inventory" portion of a prompt.
