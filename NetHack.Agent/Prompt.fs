@@ -41,9 +41,9 @@ module Prompt =
             "```"
 
             ""
-            "Blank spaces in the map indicate either unexplored areas \
-            or walls. The x-coord increases to the east and the y-coord \
-            increases to the south."
+            "The x-coord increases to the east (within a line of text) \
+            and the y-coord increases to the south (from one line of text \
+            to the next)."
 
             ""
             "## Legend:"
