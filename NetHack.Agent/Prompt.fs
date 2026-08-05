@@ -40,6 +40,7 @@ module Prompt =
                 row
             "```"
 
+            ""
             "## Legend:"
             "| Symbol | Name |"
             "|--|--|"
