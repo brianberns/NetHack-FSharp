@@ -200,17 +200,22 @@ module AgentAction =
                         else
                             let hero = state.Observation.Hero
                             hero.X + x, hero.Y + y
-                    let sym = state.Observation.Rows[y][x]
-                    let nameOpt =
-                        state.Observation.Entities
-                            |> Seq.tryFind (fun ent ->
-                                ent.Symbol = sym)
-                            |> Option.bind _.Name
-                    match nameOpt with
-                        | Some name -> $"Symbol: `{sym}` ({name})"
-                        | None -> $"Symbol: `{sym}'"
-                | None ->
-                    "Could not parse coordinates"
+                    if y >= 0 && y < state.Observation.Rows.Length then
+                        let row = state.Observation.Rows[y]
+                        if x >= 0 && x < row.Length then
+                            let sym = row[x]
+                            let nameOpt =
+                                state.Observation.Entities
+                                    |> Seq.tryFind (fun ent ->
+                                        ent.Symbol = sym)
+                                    |> Option.bind _.Name
+                            match nameOpt with
+                                | Some name -> Some $"Symbol: `{sym}` ({name})"
+                                | None -> Some $"Symbol: `{sym}'"
+                        else None
+                    else None
+                | None -> None
+                |> Option.defaultValue "Invalid coordinates"
         setMessage message state
 
     /// Applies the given action to the given state using the
