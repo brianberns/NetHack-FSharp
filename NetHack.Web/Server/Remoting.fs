@@ -30,7 +30,7 @@ type AsyncLock() =
 module Api =
 
     /// LLM driving the agent.
-    let private model = Local.model
+    let private model = OpenAi.model
 
     /// Creates a NetHack-playing agent.
     let private createAgent dir =

@@ -87,6 +87,18 @@ module Gemini =
             TryParseWaitTime = tryParseWaitTime
         }
 
+module OpenAi =
+
+    let model =
+        {
+            Name = "Gpt"
+            Id = "gpt-5.6-luna"
+            ApiKeyName = "OpenAi:ApiKey"
+            Endpoint = "https://api.openai.com/v1"
+            SupportsJsonSchema = true
+            TryParseWaitTime = fun _ -> None
+        }
+
 module OpenRouter =
 
     let model =
