@@ -49,6 +49,7 @@ type AgentAction =
         _Prediction : string
 
         [<Description("The type of action to take.")>]
+        [<JsonPropertyName("Type")>]
         Type : ActionType
 
         [<Description("Argument for the action. \
@@ -66,7 +67,8 @@ type AgentAction =
 
         [<Description("Optional repeat count for a Key command, such \
             as 's' (search) or '.' (rest).")>]
-        Count : int
+        [<JsonPropertyName("Count")>]
+        _CountOpt : Option<int>
     }
 
     /// Notes added this turn.
@@ -98,6 +100,11 @@ type AgentAction =
     member this.Value =
         if isNull this._Value then ""
         else this._Value
+
+    /// This turn's count.
+    [<JsonIgnore>]
+    member this.Count =
+        Option.defaultValue 1 this._CountOpt
 
 module AgentAction =
 
