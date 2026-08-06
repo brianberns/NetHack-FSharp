@@ -130,9 +130,6 @@ module Prompt =
     /// Creates the "Messages" portion of a prompt.
     let private getMessages messages =
         [
-            let messages =
-                List.where (fun msg ->
-                    msg <> "It's a wall.") messages   // this is an unhelpful message that appears when a successful Run ends at a wall
             if not (List.isEmpty messages) then
                 ""
                 "# Messages"
