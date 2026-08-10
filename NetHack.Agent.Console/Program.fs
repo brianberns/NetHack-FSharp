@@ -30,7 +30,9 @@ module Program =
                 let! aa =
                     let prompt =
                         Prompt.getPrompt state prevActionOpt notes
-                    Agent.getResultAsync<AgentAction> prompt agent
+                    let imagePng = Image.getMap state.Observation
+                    Agent.getResultAsync<AgentAction>
+                        prompt imagePng agent
 
                     // display the state prior to applying the action
                 View.render state notes aa

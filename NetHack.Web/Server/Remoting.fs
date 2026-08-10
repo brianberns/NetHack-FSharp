@@ -124,13 +124,13 @@ module Api =
                         |> Seq.tryLast
                         |> Option.map _.AgentAction
 
-                    // get prompt for the next state
+                    // request action from agent
                 let prompt =
                     Prompt.getPrompt curGameState lastActionOpt curNotes
-
-                    // request action from agent
+                let imagePng = Image.getMap curGameState.Observation
                 let! aa =
-                    Agent.getResultAsync<AgentAction> prompt agent
+                    Agent.getResultAsync<AgentAction>
+                        prompt imagePng agent
 
                     // save the current game state and the agent's action in that state
                 let hidden =

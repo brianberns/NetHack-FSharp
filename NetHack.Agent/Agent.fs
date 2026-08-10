@@ -167,13 +167,22 @@ module Agent =
 
     /// Prompts the agent to respond with a specific type
     /// of data.
-    let getResultAsync<'t> (prompt : string) agent =
+    let getResultAsync<'t> prompt imagePng agent =
         task {
+            let message =
+                ChatMessage(
+                    ChatRole.User,
+                    [|
+                        TextContent(prompt) :> AIContent
+                        DataContent(
+                            ReadOnlyMemory(imagePng),
+                            "image/png")
+                    |])
             let! response =
                 ChatClientStructuredOutputExtensions
                     .GetResponseAsync<'t>(
                         agent.ChatClient,
-                        prompt,
+                        message,
                         useJsonSchemaResponseFormat =
                             agent.Model.SupportsJsonSchema)
             return response.Result

@@ -40,6 +40,8 @@ module Prompt =
                 row
             "```"
 
+            "The dungeon map is also attached an image."
+
             ""
             "Blank spaces on the map indicate unexplored areas. The x-coord \
             increases to the east (within a line of text) and the y-coord \
