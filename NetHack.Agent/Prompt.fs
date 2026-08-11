@@ -40,12 +40,18 @@ module Prompt =
                 row
             "```"
 
-            "The dungeon map is also attached an image."
+            ""
+            "The dungeon map is also attached as an image."
+            
+            ""
+            "The x-coord increases to the east (within a line of \
+            text) and the y-coord increases to the south (from one \
+            line of text to the next)."
 
             ""
-            "Blank spaces on the map indicate unexplored areas. The x-coord \
-            increases to the east (within a line of text) and the y-coord \
-            increases to the south (from one line of text to the next)."
+            "Blank spaces on the map indicate unexplored areas. A \
+            corridor that appears to end at a blank space is not \
+            a dead end."
 
             ""
             "## Legend:"
@@ -270,9 +276,6 @@ module Prompt =
             been explored, so don't re-explore them. Instead, extend \
             the map into blank regions of the dungeon via untried \
             doors and corridors that appear to be dead ends."
-            "* If you run into a wall, you might be able to continue \
-            along the corridor by adjusting your direction, instead \
-            of giving up."
         ]
 
     /// Creates a prompt for the agent based on the current state.
