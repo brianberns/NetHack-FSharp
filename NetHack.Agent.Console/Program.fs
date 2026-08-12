@@ -10,7 +10,7 @@ open NetHack.Api
 
 module Program =
 
-    let model = Gemini.flash
+    let model = Local.model
 
     let agent =
         let config =
