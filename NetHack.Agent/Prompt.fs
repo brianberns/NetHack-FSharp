@@ -41,17 +41,8 @@ module Prompt =
             "```"
 
             ""
-            "The dungeon map is also attached as an image."
-            
-            ""
-            "The x-coord increases to the east (within a line of \
-            text) and the y-coord increases to the south (from one \
-            line of text to the next)."
-
-            ""
-            "Blank spaces on the map indicate unexplored areas. A \
-            corridor that appears to end at a blank space is not \
-            a dead end."
+            "The dungeon map is also attached as an image. Use this \
+            image to improve your understanding of the dungeon's layout."
 
             ""
             "## Legend:"
@@ -59,6 +50,9 @@ module Prompt =
             "|--|--|"
             for (symbol, name) in Map.toSeq observation.Legend do
                 $"| {symbol} | {name} |"
+
+            ""
+            "Blank spaces on the map indicate unexplored areas."
         ]
 
     /// Creates the "Hero status" portion of a prompt.
@@ -267,6 +261,9 @@ module Prompt =
             ""
             "# Dungeon navigation tips"
 
+            "* The x-coord increases to the east (within a line of \
+            text) and the y-coord increases to the south (from one \
+            line of text to the next)."
             "* Prefer the Run command over the Move command when \
             exploring. Use Move for precise navigation."
             "* Move and Run diagonally when applicable. (However, \
@@ -275,7 +272,8 @@ module Prompt =
             "* Rooms fully visible on the map have typically already \
             been explored, so don't re-explore them. Instead, extend \
             the map into blank regions of the dungeon via untried \
-            doors and corridors that appear to be dead ends."
+            doors and corridors. A corridor that appears to stop at \
+            a blank space or an entity is not a dead end."
         ]
 
     /// Creates a prompt for the agent based on the current state.
