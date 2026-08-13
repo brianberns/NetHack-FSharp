@@ -306,6 +306,12 @@ html, body {
 
 .menu li.selected { color: var(--good); }
 
+/* A non-selectable row (add_menu_heading), e.g. a spell menu's "Name Level
+   Category Fail Retention" column titles. Muted, like other chrome, and its
+   .menu-key slot is left blank rather than dropped, so the heading still
+   lines up with the columns below it. */
+.menu li.heading { color: var(--muted); }
+
 /* ---------- notes ---------- */
 
 .notes {

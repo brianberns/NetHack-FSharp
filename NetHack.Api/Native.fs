@@ -622,7 +622,11 @@ module Native =
                     let bytes = Array.zeroCreate<byte> anythingSize
                     Marshal.Copy(identPtr, bytes, 0, anythingSize)
                     // A selectable row carries a non-zero identifier; non-selectable
-                    // headers/separators pass a pointer to a zeroed `anything`.
+                    // headers/separators (e.g. add_menu_heading, used for a spell
+                    // menu's "Name Level Category Fail Retention" column titles)
+                    // pass a pointer to a zeroed `anything`. Surface those too --
+                    // the text can carry real meaning -- just never selectable, and
+                    // never eligible for an auto-assigned letter.
                     if bytes |> Array.exists (fun b -> b <> 0uy) then
                         // Inventory-style menus supply the item's own accelerator in
                         // ch; pickup and other object menus pass ch=0 and let the
@@ -637,7 +641,10 @@ module Native =
                         if ch <> '\000' then
                             menuIdents[ch] <- bytes
                             menuItems.Add { Key = ch; Text = strAt args 7; Glyph = None
-                                            Count = None; Selected = false }
+                                            Count = None; Selected = false; Selectable = true }
+                    else
+                        menuItems.Add { Key = '\000'; Text = strAt args 7; Glyph = None
+                                        Count = None; Selected = false; Selectable = false }
             | "shim_end_menu" -> menuTitle <- strAt args 1
             // ---- input requests: settle points ----
             | "shim_nhgetch" | "shim_nh_poskey" ->
@@ -713,7 +720,10 @@ module Native =
                 let cancel code =
                     if outp <> IntPtr.Zero then Marshal.WriteIntPtr(outp, IntPtr.Zero)
                     writeInt code
-                if initializing || menuItems.Count = 0 then
+                // A menu of nothing but headings (no Selectable rows) has nothing
+                // to choose -- auto-dismiss it exactly as an empty menu always has,
+                // rather than blocking on a choice that doesn't exist.
+                if initializing || not (menuItems |> Seq.exists _.Selectable) then
                     cancel (if how = 0 then 0 else -1)
                 else
                     let mode = match how with 0 -> PickNone | 1 -> PickOne | _ -> PickAny

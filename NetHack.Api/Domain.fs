@@ -97,11 +97,14 @@ type Status = {
 
 /// One row of a menu (inventory, spell list, pick-up list, ...).
 type MenuItem = {
-    Key      : char            // selector letter, e.g. 'a'
-    Text     : string          // "a - an uncursed +0 dagger"
-    Glyph    : Entity option   // some menus show an object glyph
-    Count    : int option      // current selection count, if any
-    Selected : bool
+    Key        : char            // selector letter, e.g. 'a'; '\000' if not Selectable
+    Text       : string          // "a - an uncursed +0 dagger"
+    Glyph      : Entity option   // some menus show an object glyph
+    Count      : int option      // current selection count, if any
+    Selected   : bool
+    Selectable : bool            // false for a heading/separator row, e.g. a
+                                  // spell menu's "Name Level Category Fail
+                                  // Retention" column header
 }
 
 /// How many items a menu lets you select.

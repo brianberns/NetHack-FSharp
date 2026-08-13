@@ -289,14 +289,26 @@ module View =
                                 Html.ul [
                                     prop.className "menu"
                                     prop.children [
-                                        for item in items do
+                                        for i, item in List.indexed items do
                                             Html.li [
-                                                prop.key (string item.Key)
-                                                prop.className (if item.Selected then "selected" else "")
+                                                prop.key i
+                                                prop.className (
+                                                    if not item.Selectable then "heading"
+                                                    elif item.Selected then "selected"
+                                                    else "")
                                                 prop.children [
+                                                    // a heading has no real key (e.g. a
+                                                    // spell menu's column titles), so
+                                                    // leave its slot blank rather than
+                                                    // showing the '\000' sentinel --
+                                                    // still reserves the column width,
+                                                    // which is what keeps it aligned
+                                                    // with the rows below it
                                                     Html.span [
                                                         prop.className "menu-key"
-                                                        prop.text (string item.Key)
+                                                        prop.text (
+                                                            if item.Selectable then string item.Key
+                                                            else "")
                                                     ]
                                                     Html.span [ prop.text item.Text ]
                                                 ]

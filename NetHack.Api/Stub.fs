@@ -132,7 +132,8 @@ module Stub =
         | Command, Key 'i' ->
             state w [] (Menu("Inventory", PickNone,
                              [ { Key = 'a'; Text = "a - an uncursed +1 short sword"
-                                 Glyph = None; Count = None; Selected = false } ]))
+                                 Glyph = None; Count = None; Selected = false
+                                 Selectable = true } ]))
         | Menu _, _ -> state w [] Command   // dismiss any menu
         | More, _ -> state w [] Command
         | _, _ -> state w [ "Unknown command." ] Command

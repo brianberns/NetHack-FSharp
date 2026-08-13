@@ -273,8 +273,11 @@ type NativeTests(fixture: GameFixture) =
         match s.Inv.Pending with
         | Menu (_, _, items) ->
             Assert.NotEmpty items
+            // The menu may also carry non-selectable category headings (e.g.
+            // "Weapons"); compare only the real, selectable rows against the
+            // flat Inventory list, which has no such headings of its own.
             Assert.Equal<char list>(
-                items |> List.map (fun it -> it.Key),
+                items |> List.filter _.Selectable |> List.map (fun it -> it.Key),
                 s.Start.Observation.Inventory |> List.map (fun it -> it.Letter))
         | other -> failwith $"expected an inventory Menu, got {other}"
 
