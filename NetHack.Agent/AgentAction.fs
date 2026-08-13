@@ -218,7 +218,7 @@ module AgentAction =
                                     |> Option.bind _.Name
                             match nameOpt with
                                 | Some name -> Some $"Symbol: `{sym}` ({name})"
-                                | None -> Some $"Symbol: `{sym}'"
+                                | None -> Some $"Symbol: `{sym}`"
                         else None
                     else None
                 | None -> None
