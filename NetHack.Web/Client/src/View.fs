@@ -136,9 +136,11 @@ module View =
     // ------------------------------------------------------------------- map
 
     /// One character of the map: an entity's glyph if something decoded is
-    /// standing here, otherwise plain terrain.
-    let private renderCell (legend : Map<string, string>) (x : int) (entity : Entity option) (ch : char) =
+    /// standing here, otherwise plain terrain. Every cell gets a tooltip --
+    /// at minimum its coordinates, even one the hero has never sensed at all.
+    let private renderCell (legend : Map<string, string>) (x : int) (y : int) (entity : Entity option) (ch : char) =
         let symbol = string ch
+        let pos = $"({x},{y})"
         let className, color, tip =
             match entity with
                 | Some ent ->
@@ -152,23 +154,25 @@ module View =
                     let name = ent.Name |> Option.defaultValue (kindText ent.Kind)
                     let tip =
                         String.concat "" [
-                            name
-                            $" ({kindText ent.Kind})"
+                            pos
+                            $" {name} ({kindText ent.Kind})"
                             if ent.Pile then " — topmost of a pile"
                             if not ent.InView then " — remembered, not in view"
                         ]
-                    className, Some (colorOf ent.Color), Some tip
+                    className, Some (colorOf ent.Color), tip
                 | None ->
-                    "cell", None, Map.tryFind symbol legend
+                    let tip =
+                        match Map.tryFind symbol legend with
+                            | Some name -> $"{pos} {name}"
+                            | None -> pos
+                    "cell", None, tip
         Html.span [
             prop.key x
             prop.className className
             match color with
                 | Some c -> prop.style [ style.color c ]
                 | None -> ()
-            match tip with
-                | Some t -> prop.title t
-                | None -> ()
+            prop.title tip
             prop.text symbol
         ]
 
@@ -224,7 +228,7 @@ module View =
                                                     // the right-hand gutter would not line up
                                                     for x in 0 .. obs.Width - 1 do
                                                         let ch = if x < row.Length then row[x] else ' '
-                                                        renderCell obs.Legend x (Map.tryFind (x, y) entities) ch
+                                                        renderCell obs.Legend x y (Map.tryFind (x, y) entities) ch
                                                     Html.span [
                                                         prop.className "map-gutter right"
                                                         prop.text (string y)
