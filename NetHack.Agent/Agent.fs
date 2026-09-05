@@ -92,7 +92,7 @@ module OpenAi =
     let model =
         {
             Name = "Gpt"
-            Id = "gpt-5.6-sol"
+            Id = "gpt-6-astra"
             ApiKeyName = "OpenAi:ApiKey"
             Endpoint = "https://api.openai.com/v1"
             SupportsJsonSchema = true
